@@ -18,19 +18,19 @@ interface AuthState {
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    loggedIn: !!localStorage.getItem('analytics:logged_in'),
+    loggedIn: !!localStorage.getItem('mis:logged_in'),
     user: null
   } as AuthState,
   reducers: {
     setLoggedIn(state, action: PayloadAction<UserInfo>) {
       state.loggedIn = true
       state.user = action.payload
-      localStorage.setItem('analytics:logged_in', '1')
+      localStorage.setItem('mis:logged_in', '1')
     },
     setLoggedOut(state) {
       state.loggedIn = false
       state.user = null
-      localStorage.removeItem('analytics:logged_in')
+      localStorage.removeItem('mis:logged_in')
     }
   }
 })

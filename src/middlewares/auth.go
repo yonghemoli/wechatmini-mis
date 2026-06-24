@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const SessionCookieName = "analytics_sid"
+const SessionCookieName = "mis_sid"
 
 // AuthRequired 登录鉴权中间件
 func AuthRequired() gin.HandlerFunc {

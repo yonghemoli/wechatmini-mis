@@ -1,5 +1,5 @@
 package game
 
-import "github.com/xiuxianjs/xiuxian-game-db-sdk/gamemodels"
+import "errors"
 
-var ErrGameDBNil = gamemodels.ErrGameDBNil
+var ErrGameDBNil = errors.New("游戏数据库未连接")

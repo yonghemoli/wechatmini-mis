@@ -8,7 +8,7 @@ const api = axios.create({
   withCredentials: true // 自动发送 cookie
 })
 
-export const LOGIN_FLAG_KEY = 'analytics:logged_in'
+export const LOGIN_FLAG_KEY = 'mis:logged_in'
 
 export const QQ_TEMPLATE_KEY = 'analytics:template'
 
@@ -55,22 +55,21 @@ export const server = async (
         resolve(res.data)
       })
       .catch(err => {
-        const isCallback = window.location.pathname.includes('/sso/callback')
-        if (err?.response?.status === 401 && !isCallback) {
+        if (err?.response?.status === 401) {
           localStorage.removeItem(LOGIN_FLAG_KEY)
-          if (window.location.pathname === '/login') {
-            window.location.href = '/login'
+          if (window.location.pathname === '/admin/login') {
+            window.location.href = '/admin/login'
           } else {
             emitSessionExpired()
           }
-        } else if (!isCallback && err?.response?.data?.msg) {
+        } else if (err?.response?.data?.msg) {
           message.error(err.response.data.msg)
         } else if (err?.response?.status === 404) {
           message.error('API未找到，请检查网络连接或联系管理员')
         } else if (err?.response?.status === 500) {
           count++
           if (count > 15) {
-            window.location.href = '/login'
+            window.location.href = '/admin/login'
             return
           } else if (count > 5) {
             message.error(`服务器错误,10s后退出(${15 - count}s)`)
@@ -110,8 +109,8 @@ export const request = async (
         if (err?.response?.status === 401) {
           localStorage.removeItem(LOGIN_FLAG_KEY)
           // 如果已在登录页则跳转，否则弹出登录弹窗
-          if (window.location.pathname === '/login') {
-            window.location.href = '/login'
+          if (window.location.pathname === '/admin/login') {
+            window.location.href = '/admin/login'
           } else {
             emitSessionExpired()
           }
@@ -122,7 +121,7 @@ export const request = async (
         } else if (err?.response?.status === 500) {
           count++
           if (count > 15) {
-            window.location.href = '/login'
+            window.location.href = '/admin/login'
             return
           } else if (count > 5) {
             message.error(`服务器错误,10s后退出(${15 - count}s)`)

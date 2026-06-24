@@ -6,8 +6,9 @@
 
 - 技术栈：Go 后端 + Vite/React/Ant Design 前端。
 - 数据库：MySQL 作为业务读写库。
-- 现状：仓库原始形态是游戏数据分析后台，后端和大量旧前端页面仍保留历史模块。
-- 本次升级：前端入口、导航和核心页面已收敛为家政 MIS，不再暴露游戏分析入口。
+- 管理端：内部账号密码登录，不再依赖单点登录。
+- 前端入口：管理端统一挂载在 `/admin`。
+- 本次升级：前端入口、导航和核心页面已收敛为家政 MIS。
 - 当前页面：工作台、订单管理、用户管理、内容/商品发布、数据看板。
 - 数据状态：前端先使用本地 mock 数据跑通运营流程，后续再替换为真实家政业务 API。
 
@@ -40,7 +41,7 @@
 
 要升级为真正独立的家政 MIS，需要继续处理以下事项：
 
-- 后端重命名和清理：移除 `gamestat`、`realm`、`dungeon` 等游戏领域 API，建立 `orders`、`users`、`contents`、`reports` 等家政领域接口。
+- 后端领域收敛：建立 `orders`、`users`、`contents`、`reports` 等家政领域接口。
 - 数据模型：新增订单、用户、服务商品、内部备注、退款/关闭记录、来源分析表。
 - 权限体系：按老板/运营/客服/财务分配菜单和操作权限。
 - 导出能力：当前为前端 CSV，正式版应由后端按筛选条件生成对账文件。
@@ -81,7 +82,7 @@
 
 ## 后端数据库
 
-业务数据库使用 MySQL，通过环境变量配置：
+业务数据库仅支持 MySQL，通过环境变量配置：
 
 ```dotenv
 ANALYTICS_DB_DRIVER=mysql
@@ -89,7 +90,15 @@ ANALYTICS_DB_DSN=root:password@tcp(127.0.0.1:3306)/yonhemoli_mis?charset=utf8mb4
 ANALYTICS_DB_AUTO_MIGRATE=true
 ```
 
-`ANALYTICS_GAME_DB_*` 是历史游戏只读库配置，后续完成家政 MIS 后端清理时应移除。
+内部管理员账号通过环境变量配置：
+
+```dotenv
+MIS_ADMIN_USERNAME=admin
+MIS_ADMIN_PASSWORD=admin123
+MIS_ADMIN_EMAIL=admin@yonghemoli.local
+```
+
+后台入口为 `/admin`，管理端接口为 `/api/v1`，小程序接口为 `/api/mini`。
 
 ## 前端开发
 

@@ -23,34 +23,34 @@ import {
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, setLoggedOut } from '@/redux'
-import { apiLogout, apiSSOConfig } from '@/api'
+import { apiLogout } from '@/api'
 import { onSessionExpired, resetSessionExpired } from '@/utils/authEvent'
 
 const { Header, Sider, Content } = Layout
 
 const menuItems = [
   {
-    key: '/dashboard',
+    key: '/admin/dashboard',
     icon: <DashboardOutlined />,
     label: '工作台'
   },
   {
-    key: '/orders',
+    key: '/admin/orders',
     icon: <FileTextOutlined />,
     label: '订单管理'
   },
   {
-    key: '/users',
+    key: '/admin/users',
     icon: <TeamOutlined />,
     label: '用户管理'
   },
   {
-    key: '/content',
+    key: '/admin/content',
     icon: <ShopOutlined />,
     label: '内容商品'
   },
   {
-    key: '/reports',
+    key: '/admin/reports',
     icon: <LineChartOutlined />,
     label: '数据看板'
   }
@@ -71,7 +71,7 @@ const AppLayout: React.FC = () => {
       message.warning('会话已过期，请重新登录')
       dispatch(setLoggedOut())
       resetSessionExpired()
-      navigate('/login', { replace: true })
+      navigate('/admin/login', { replace: true })
     })
     return unsubscribe
   }, [dispatch, navigate])
@@ -79,21 +79,11 @@ const AppLayout: React.FC = () => {
   const handleLogout = async () => {
     await apiLogout()
     dispatch(setLoggedOut())
-    try {
-      const res = await apiSSOConfig()
-      const authURL = res?.data?.authURL || res?.authURL
-      if (authURL) {
-        window.location.href = `${authURL}/api/sso/logout?redirect_uri=${encodeURIComponent(window.location.origin)}`
-        return
-      }
-    } catch {
-      /* fallback */
-    }
-    navigate('/login')
+    navigate('/admin/login')
   }
 
   const selectedKey =
-    routeKeys.find(key => location.pathname.startsWith(key)) || '/dashboard'
+    routeKeys.find(key => location.pathname.startsWith(key)) || '/admin/dashboard'
 
   return (
     <Layout style={{ minHeight: '100vh', background: token.colorBgLayout }}>

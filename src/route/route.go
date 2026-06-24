@@ -45,9 +45,8 @@ func SetupRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
 
 	// 公开接口
-	api.GET("/sso/config", user.SSOConfig)
-	api.POST("/sso/login", user.SSOLogin)
-	api.GET("/sso/session", user.SSOValidateSession)
+	api.POST("/login", user.Login)
+	api.GET("/session", user.Session)
 	api.POST("/logout", user.Logout)
 
 	// 数据上报接口（游戏 SDK 调用，无需登录认证，但需要 API Key）

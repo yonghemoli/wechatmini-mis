@@ -1,13 +1,10 @@
 import { server } from './base'
 
-// ==================== SSO 认证 ====================
-export const apiSSOConfig = () => server({ url: '/sso/config', method: 'GET' })
+// ==================== 内部认证 ====================
+export const apiLogin = (data: { username: string; password: string }) =>
+  server({ url: '/login', method: 'POST', data })
 
-export const apiSSOLogin = (data: { code: string }) =>
-  server({ url: '/sso/login', method: 'POST', data })
-
-export const apiSSOSession = () =>
-  server({ url: '/sso/session', method: 'GET' })
+export const apiSession = () => server({ url: '/session', method: 'GET' })
 
 export const apiLogout = () => server({ url: '/logout', method: 'POST' })
 

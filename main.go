@@ -23,7 +23,7 @@ func main() {
 
 	// 2. 初始化日志
 	logger.Init()
-	logger.Info("修仙游戏数据分析系统启动中...")
+	logger.Info("系统启动中...")
 
 	// 3. 初始化数据库
 	if err := db.Init(); err != nil {

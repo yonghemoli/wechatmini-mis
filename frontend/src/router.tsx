@@ -4,7 +4,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { WithSuspense } from './WithSuspense'
 
 const Login = lazy(() => import('./pages/login/App'))
-const SSOCallback = lazy(() => import('./pages/sso/SSOCallbackPage'))
 const AppLayout = lazy(() => import('./pages/layout/AppLayout'))
 const Dashboard = lazy(() => import('./pages/dashboard/App'))
 const Orders = lazy(() => import('./pages/orders/App'))
@@ -16,20 +15,20 @@ const wrap = (node: ReactNode) => <WithSuspense>{node}</WithSuspense>
 
 const router = createBrowserRouter([
   {
-    path: '/login',
+    path: '/',
+    element: <Navigate to="/admin" replace />
+  },
+  {
+    path: '/admin/login',
     element: wrap(<Login />)
   },
   {
-    path: '/sso/callback',
-    element: wrap(<SSOCallback />)
-  },
-  {
-    path: '/',
+    path: '/admin',
     element: wrap(<AppLayout />),
     children: [
       {
         index: true,
-        element: <Navigate to="/dashboard" replace />
+        element: <Navigate to="/admin/dashboard" replace />
       },
       {
         path: 'dashboard',
@@ -55,7 +54,7 @@ const router = createBrowserRouter([
   },
   {
     path: '*',
-    element: <Navigate to="/" replace />
+    element: <Navigate to="/admin" replace />
   }
 ])
 

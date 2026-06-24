@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
             </Title>
             <Badge count={exceptionOrders.length} />
           </Space>
-          <Button type="primary" danger onClick={() => navigate('/orders')}>
+          <Button type="primary" danger onClick={() => navigate('/admin/orders')}>
             进入订单处理
           </Button>
         </div>
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
               title: '动作',
               width: 120,
               render: () => (
-                <Button icon={<FileTextOutlined />} onClick={() => navigate('/orders')}>
+                <Button icon={<FileTextOutlined />} onClick={() => navigate('/admin/orders')}>
                   处理
                 </Button>
               )

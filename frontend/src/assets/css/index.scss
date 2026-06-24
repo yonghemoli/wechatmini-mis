@@ -26,6 +26,20 @@ img {
   pointer-events: none;
 }
 
+.mis-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
+
+.mis-login-card {
+  width: 400px;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+}
+
 .mis-page-title,
 .mis-panel-header,
 .mis-toolbar {

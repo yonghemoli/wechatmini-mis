@@ -26,12 +26,12 @@ func AggregateHourlyStats(date string) error {
 	var userRows []userHourRow
 	err := d.Model(&db.FeatureEventDO{}).
 		Select(`uid,
-			EXTRACT(HOUR FROM event_time)::int as hour,
+			HOUR(event_time) as hour,
 			COUNT(*) as command_count,
-			TO_CHAR(MIN(event_time), 'HH24:MI:SS') as first_seen,
-			TO_CHAR(MAX(event_time), 'HH24:MI:SS') as last_seen`).
+			DATE_FORMAT(MIN(event_time), '%H:%i:%s') as first_seen,
+			DATE_FORMAT(MAX(event_time), '%H:%i:%s') as last_seen`).
 		Where("DATE(event_time) = ?", date).
-		Group("uid, EXTRACT(HOUR FROM event_time)").
+		Group("uid, HOUR(event_time)").
 		Find(&userRows).Error
 	if err != nil {
 		return fmt.Errorf("聚合用户小时数据失败: %w", err)
@@ -62,11 +62,11 @@ func AggregateHourlyStats(date string) error {
 
 	var globalRows []globalRow
 	err = d.Model(&db.FeatureEventDO{}).
-		Select(`EXTRACT(HOUR FROM event_time)::int as hour,
+		Select(`HOUR(event_time) as hour,
 			COUNT(DISTINCT uid) as active_users,
 			COUNT(*) as total_commands`).
 		Where("DATE(event_time) = ?", date).
-		Group("EXTRACT(HOUR FROM event_time)").
+		Group("HOUR(event_time)").
 		Find(&globalRows).Error
 	if err != nil {
 		return fmt.Errorf("聚合全局小时数据失败: %w", err)

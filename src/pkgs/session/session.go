@@ -10,7 +10,6 @@ import (
 // Session 会话数据
 type Session struct {
 	AdminID      uint   // 本地管理员 ID
-	SSOUserID    uint   // SSO 用户 ID
 	Username     string // 显示名
 	Email        string
 	Avatar       string
@@ -27,13 +26,12 @@ var (
 )
 
 // Create 创建新会话，返回 sessionID
-func Create(adminID, ssoUserID uint, username, email, avatar string, isSuperAdmin bool, roleID *int64) string {
+func Create(adminID uint, username, email, avatar string, isSuperAdmin bool, roleID *int64) string {
 	sid := generateID()
 	mu.Lock()
 	defer mu.Unlock()
 	store[sid] = &Session{
 		AdminID:      adminID,
-		SSOUserID:    ssoUserID,
 		Username:     username,
 		Email:        email,
 		Avatar:       avatar,

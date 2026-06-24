@@ -5,7 +5,7 @@ import (
 	"log"
 	"yonghemolimis/src/settings"
 
-	"github.com/xiuxianjs/xiuxian-game-db-sdk/dbkit"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -33,10 +33,10 @@ func Init() error {
 
 	// 初始化业务数据库
 	var err error
-	analyticsDB, err = dbkit.Open(dbkit.DatabaseConfig{
-		Driver: dbc.Driver,
-		DSN:    dbc.DSN,
-	})
+	if dbc.Driver != "mysql" {
+		return errors.New("业务数据库仅支持 MySQL，请设置 ANALYTICS_DB_DRIVER=mysql")
+	}
+	analyticsDB, err = gorm.Open(mysql.Open(dbc.DSN), &gorm.Config{})
 	if err != nil {
 		return err
 	}
@@ -49,21 +49,6 @@ func Init() error {
 		} else {
 			log.Println("[DB] 自动迁移完成")
 		}
-	}
-
-	// 初始化游戏数据库（只读）
-	gameConf := settings.Conf.GameDB
-	if gameConf != nil && gameConf.DSN != "" {
-		gameDB, err = dbkit.Open(dbkit.DatabaseConfig{
-			Driver: gameConf.Driver,
-			DSN:    gameConf.DSN,
-		})
-		if err != nil {
-			return err
-		}
-		log.Println("[DB] 游戏数据库连接成功 (只读)")
-	} else {
-		log.Println("[DB] 游戏数据库未配置，部分功能将不可用")
 	}
 
 	return nil

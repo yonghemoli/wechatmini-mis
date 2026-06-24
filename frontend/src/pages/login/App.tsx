@@ -1,9 +1,9 @@
-import React, { useEffect, useCallback, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDispatch } from 'react-redux'
-import { Card, Typography, Button, Spin, message, Alert } from 'antd'
-import { LoginOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Form, Input, Spin, Typography, message } from 'antd'
+import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { apiSSOConfig, apiSSOSession } from '@/api'
+import { apiLogin, apiSession } from '@/api'
 import { setLoggedIn } from '@/redux'
 
 const { Title, Text } = Typography
@@ -13,12 +13,12 @@ const Login: React.FC = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const forbidden = searchParams.get('forbidden') === '1'
   const forbiddenMsg = searchParams.get('msg') || '没有权限，请联系管理员'
 
-  // 检查已有会话
   useEffect(() => {
-    apiSSOSession()
+    apiSession()
       .then((res: any) => {
         if (res?.code === 0 && res.data?.user) {
           const u = res.data.user
@@ -32,7 +32,7 @@ const Login: React.FC = () => {
               roleId: u.roleId ?? null
             })
           )
-          navigate('/', { replace: true })
+          navigate('/admin', { replace: true })
           return
         }
         setLoading(false)
@@ -40,58 +40,48 @@ const Login: React.FC = () => {
       .catch(() => setLoading(false))
   }, [dispatch, navigate])
 
-  const handleSSO = useCallback(async () => {
+  const handleLogin = async (values: { username: string; password: string }) => {
+    setSubmitting(true)
     try {
-      const res = await apiSSOConfig()
-      if (res?.data?.authURL) {
-        const callbackURL = `${window.location.origin}/sso/callback`
-        window.location.href = `${res.data.authURL}/api/sso/authorize?redirect_uri=${encodeURIComponent(callbackURL)}`
-      } else {
-        message.error('SSO 未配置，请联系管理员')
+      const res = await apiLogin(values)
+      if (res?.code === 0 && res.data?.user) {
+        const u = res.data.user
+        dispatch(
+          setLoggedIn({
+            id: u.id,
+            username: u.username,
+            email: u.email,
+            avatar: u.avatar || '',
+            isSuperAdmin: u.isSuperAdmin,
+            roleId: u.roleId ?? null
+          })
+        )
+        message.success('登录成功')
+        navigate('/admin', { replace: true })
+        return
       }
-    } catch {
-      message.error('获取 SSO 配置失败')
+      message.error(res?.message || '登录失败')
+    } finally {
+      setSubmitting(false)
     }
-  }, [])
+  }
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-        }}
-      >
+      <div className="mis-login-page">
         <Spin size="large" />
       </div>
     )
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}
-    >
-      <Card
-        style={{
-          width: 400,
-          borderRadius: 12,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+    <div className="mis-login-page">
+      <Card className="mis-login-card">
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <Title level={2} style={{ marginBottom: 8 }}>
-            修仙数据分析
+            家政 MIS
           </Title>
-          <Text type="secondary">游戏用户画像与数据洞察平台</Text>
+          <Text type="secondary">内部运营管理系统</Text>
         </div>
 
         {forbidden && (
@@ -104,15 +94,21 @@ const Login: React.FC = () => {
           />
         )}
 
-        <Button
-          type="primary"
-          icon={<LoginOutlined />}
-          size="large"
-          block
-          onClick={handleSSO}
-        >
-          SSO 统一登录
-        </Button>
+        <Form layout="vertical" onFinish={handleLogin} initialValues={{ username: 'admin' }}>
+          <Form.Item name="username" label="账号" rules={[{ required: true }]}>
+            <Input prefix={<UserOutlined />} placeholder="请输入内部账号" size="large" />
+          </Form.Item>
+          <Form.Item name="password" label="密码" rules={[{ required: true }]}>
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="请输入密码"
+              size="large"
+            />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
+            登录
+          </Button>
+        </Form>
 
         <Text
           type="secondary"
@@ -123,7 +119,7 @@ const Login: React.FC = () => {
             marginTop: 16
           }}
         >
-          使用统一认证中心账号登录
+          默认开发账号由 MIS_ADMIN_USERNAME / MIS_ADMIN_PASSWORD 配置
         </Text>
       </Card>
     </div>

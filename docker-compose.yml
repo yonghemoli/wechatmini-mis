@@ -38,13 +38,13 @@ services:
       - ANALYTICS_SERVER_HOST=${ANALYTICS_SERVER_HOST:-127.0.0.1}
       - ANALYTICS_SERVER_PORT=${ANALYTICS_SERVER_PORT:-8080}
       - ANALYTICS_MODE=${ANALYTICS_MODE:-release}
+      - MIS_ADMIN_USERNAME=${MIS_ADMIN_USERNAME:-admin}
+      - MIS_ADMIN_PASSWORD=${MIS_ADMIN_PASSWORD:-admin123}
+      - MIS_ADMIN_EMAIL=${MIS_ADMIN_EMAIL:-admin@yonghemoli.local}
       # ---- 业务数据库 (MySQL, 读写) ----
       - ANALYTICS_DB_DRIVER=mysql
       - ANALYTICS_DB_DSN=${ANALYTICS_DB_DSN:-root:password@tcp(mysql:3306)/yonhemoli_mis?charset=utf8mb4&parseTime=True&loc=Local}
       - ANALYTICS_DB_AUTO_MIGRATE=true
-      # ---- 游戏数据库 (MySQL, 只读) ----
-      - ANALYTICS_GAME_DB_DRIVER=mysql
-      - ANALYTICS_GAME_DB_DSN=root:Mm002580!@tcp(bj-cynosdbmysql-grp-lekuh05a.sql.tencentcdb.com:21082)/xiuxian_release?charset=utf8mb4&parseTime=True&loc=Local
       - ANALYTICS_TRACK_API_KEY=77211084835e915e2c937cf1248f940ccee99a66abaf500d8c0704240835dc76
     ports:
       - "4001:8080"
