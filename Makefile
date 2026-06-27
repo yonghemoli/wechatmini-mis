@@ -60,33 +60,6 @@ swagger: ## 生成Swagger文档
 	@echo "生成Swagger文档..."
 	swag init
 
-# 安全相关
-gen-api-key: ## 生成随机 Track API Key
-	@KEY=$$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 64) && \
-	echo "" && \
-	echo "✅ 已生成 Track API Key:" && \
-	echo "" && \
-	echo "  $$KEY" && \
-	echo "" && \
-	echo "用法:" && \
-	echo "  1) 在 .env 中设置: ANALYTICS_TRACK_API_KEY=$$KEY" && \
-	echo "  2) 在游戏端中设置: analytics_api_key: $$KEY" && \
-	echo "  3) docker compose up --build -d" && \
-	echo ""
-
-gen-api-key-env: ## 生成 API Key 并写入 .env
-	@KEY=$$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 64) && \
-	if [ -f .env ]; then \
-		if grep -q '^ANALYTICS_TRACK_API_KEY=' .env; then \
-			TMP=$$(mktemp) && sed "s/^ANALYTICS_TRACK_API_KEY=.*/ANALYTICS_TRACK_API_KEY=$$KEY/" .env > $$TMP && mv $$TMP .env; \
-		else \
-			echo "ANALYTICS_TRACK_API_KEY=$$KEY" >> .env; \
-		fi; \
-	else \
-		echo "ANALYTICS_TRACK_API_KEY=$$KEY" > .env; \
-	fi && \
-	echo "✅ API Key 已写入 .env: $$KEY"
-
 # Docker相关
 docker-build: ## 构建Docker镜像
 	@echo "构建Docker镜像..."
@@ -111,6 +84,21 @@ db-start: ## 启动数据库
 db-stop: ## 停止数据库
 	@echo "停止数据库..."
 	cd resources/db && docker-compose down
+
+db-seed: ## 初始化默认管理员和开发数据
+	@echo "初始化默认管理员和开发数据..."
+	@set -a && . ./.env && set +a && \
+	DSN="$${MIS_DB_DSN}" && \
+	AUTH="$${DSN%%@tcp*}" && \
+	DB_USER="$${AUTH%%:*}" && \
+	DB_PASS="$${AUTH#*:}" && \
+	ADDR_DB="$${DSN#*@tcp(}" && \
+	ADDR="$${ADDR_DB%%)*}" && \
+	DB_HOST="$${ADDR%%:*}" && \
+	DB_PORT="$${ADDR#*:}" && \
+	DB_PART="$${DSN#*)/}" && \
+	DB_NAME="$${DB_PART%%\?*}" && \
+	MYSQL_PWD="$$DB_PASS" mysql -h "$$DB_HOST" -P "$$DB_PORT" -u "$$DB_USER" "$$DB_NAME" < sql/init-seed.sql
 
 # 服务管理
 service-install: ## 安装系统服务

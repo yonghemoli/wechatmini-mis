@@ -6,6 +6,8 @@ interface UserInfo {
   username: string
   email: string
   avatar: string
+  name?: string
+  status?: string
   isSuperAdmin?: boolean
   roleId?: number | null
 }

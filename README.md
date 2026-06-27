@@ -9,8 +9,8 @@
 - 管理端：内部账号密码登录，不再依赖单点登录。
 - 前端入口：管理端统一挂载在 `/admin`。
 - 本次升级：前端入口、导航和核心页面已收敛为家政 MIS。
-- 当前页面：工作台、订单管理、用户管理、内容/商品发布、数据看板。
-- 数据状态：前端先使用本地 mock 数据跑通运营流程，后续再替换为真实家政业务 API。
+- 当前页面：工作台、订单管理、用户管理、服务类型管理、服务管理、账户管理、店铺管理、常见问题管理、客服在线。
+- 数据状态：管理端页面已对接 `/api/v1` 真实接口；开发初始化数据通过 `sql/init-seed.sql` 手动写入。
 
 ## 家政 MIS 模块边界
 
@@ -28,24 +28,35 @@
    - 展示头像、昵称、注册时间、累计消费金额、最后下单时间。
    - 仅保留手动封禁/解封。
 
-4. 内容/商品发布
-   - 管理小程序首页展示的服务图、价格、服务介绍文案。
-   - 支持增删改查和上下架开关。
+4. 服务类型管理
+   - 管理服务分类、排序、启用/停用。
+   - 给小程序和运营后台统一服务分类口径。
 
-5. 数据看板
-   - 近 7 天/30 天营收曲线。
-   - 来源分析：扫一扫、搜索、分享。
-   - 支持导出 CSV。
+5. 服务管理
+   - 管理服务名称、所属类型、图片、价格、单位、介绍、排序。
+   - 支持新增、编辑、删除、上下架和导出 CSV。
+
+6. 账户管理
+   - 内部管理员多账号管理。
+   - 支持创建、编辑、启停用、重置密码，仅超级管理员可见。
+
+7. 店铺管理
+   - 管理店铺名称、联系人、电话、地址、营业时间、营业状态和备注。
+   - 支持开业/停业。
+
+8. 常见问题管理
+   - 管理小程序 FAQ 的问题、答案、分类、排序和上下架。
+
+9. 客服在线
+   - 独立全屏聊天页。
+   - 支持会话列表、消息查看、文本回复、标记已读和关闭会话。
 
 ## 后续升级记录
 
-要升级为真正独立的家政 MIS，需要继续处理以下事项：
+后续可以继续处理以下事项：
 
-- 后端领域收敛：建立 `orders`、`users`、`contents`、`reports` 等家政领域接口。
-- 数据模型：新增订单、用户、服务商品、内部备注、退款/关闭记录、来源分析表。
 - 权限体系：按老板/运营/客服/财务分配菜单和操作权限。
-- 导出能力：当前为前端 CSV，正式版应由后端按筛选条件生成对账文件。
-- 小程序联动：内容/商品发布需要对接小程序首页配置与上下架状态。
+- 小程序联动：后续 `/api/mini` 首页服务列表应从 `services` 和 `service_types` 表读取。
 
 ## 小程序接口
 
@@ -85,20 +96,36 @@
 业务数据库仅支持 MySQL，通过环境变量配置：
 
 ```dotenv
-ANALYTICS_DB_DRIVER=mysql
-ANALYTICS_DB_DSN=root:password@tcp(127.0.0.1:3306)/yonhemoli_mis?charset=utf8mb4&parseTime=True&loc=Local
-ANALYTICS_DB_AUTO_MIGRATE=true
-```
-
-内部管理员账号通过环境变量配置：
-
-```dotenv
-MIS_ADMIN_USERNAME=admin
-MIS_ADMIN_PASSWORD=admin123
-MIS_ADMIN_EMAIL=admin@yonghemoli.local
+MIS_DB_DRIVER=mysql
+MIS_DB_DSN=root:password@tcp(127.0.0.1:3306)/yonhemoli_mis?charset=utf8mb4&parseTime=True&loc=Local
+MIS_DB_AUTO_MIGRATE=false
 ```
 
 后台入口为 `/admin`，管理端接口为 `/api/v1`，小程序接口为 `/api/mini`。
+
+## 初始化数据
+
+GORM AutoMigrate 只负责建表和字段迁移；默认管理员等额外初始化数据不在服务启动时自动写入，避免每次启动产生额外 SQL。
+
+`MIS_DB_AUTO_MIGRATE=true` 时，GORM 会对每个模型查询 `information_schema` 检查表、字段、索引和约束，所以启动日志里会出现大量 SQL。生产和日常开发默认保持 `false`，只在首次建表或表结构变更时临时开启一次。
+
+首次部署时，在应用完成一次启动并创建表后，手动执行：
+
+```sh
+# 首次建表
+MIS_DB_AUTO_MIGRATE=true go run .
+
+# 初始化默认数据
+make db-seed
+```
+
+默认管理员账号：
+
+```text
+admin / admin123
+```
+
+注意：登录不读取 `MIS_ADMIN_USERNAME` / `MIS_ADMIN_PASSWORD`。内部账号必须存在于 MySQL 的 `admins` 表；首次部署或清空数据库后，需要手动执行 `sql/init-seed.sql` 写入默认管理员。
 
 ## 前端开发
 

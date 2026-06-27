@@ -8,27 +8,19 @@ import (
 )
 
 const (
-	ServiceName        = "yonghemoli-mis"
+	ServiceName        = "yonghemolimis"
 	ServiceDescription = "家政 MIS 系统"
 )
 
 var Conf = new(AppConfig)
 
 type AppConfig struct {
-	Name        string          `json:"name"`
-	Mode        string          `json:"mode"`
-	TrackAPIKey string          `json:"track_api_key"`
-	Server      *ServerConfig   `json:"server"`
-	Session     *SessionConfig  `json:"session"`
-	Log         *LogConfig      `json:"log"`
-	Admin       *AdminConfig    `json:"admin"`
-	DB          *DatabaseConfig `json:"database"`
-}
-
-type AdminConfig struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
+	Name    string          `json:"name"`
+	Mode    string          `json:"mode"`
+	Server  *ServerConfig   `json:"server"`
+	Session *SessionConfig  `json:"session"`
+	Log     *LogConfig      `json:"log"`
+	DB      *DatabaseConfig `json:"database"`
 }
 
 type ServerConfig struct {
@@ -54,47 +46,34 @@ type DatabaseConfig struct {
 func Init() error {
 	log.Println("=== 家政 MIS 系统配置初始化 ===")
 
-	Conf.Name = getEnv("ANALYTICS_NAME", ServiceName)
-	Conf.Mode = getEnv("ANALYTICS_MODE", "release")
-	Conf.TrackAPIKey = getEnv("ANALYTICS_TRACK_API_KEY", "")
+	Conf.Name = getEnv("MIS_NAME", ServiceName)
+	Conf.Mode = getEnv("MIS_MODE", "release")
 
 	Conf.Server = &ServerConfig{
-		Host: getEnv("ANALYTICS_SERVER_HOST", "127.0.0.1"),
-		Port: getEnv("ANALYTICS_SERVER_PORT", "8080"),
+		Host: getEnv("MIS_SERVER_HOST", "127.0.0.1"),
+		Port: getEnv("MIS_SERVER_PORT", "8080"),
 	}
 
 	Conf.Session = &SessionConfig{
-		ExpiresDays: getEnvAsInt64("ANALYTICS_SESSION_EXPIRES_DAYS", 30),
+		ExpiresDays: getEnvAsInt64("MIS_SESSION_EXPIRES_DAYS", 30),
 	}
 
 	Conf.Log = &LogConfig{
-		Level:    getEnv("ANALYTICS_LOG_LEVEL", "info"),
-		Filename: getEnv("ANALYTICS_LOG_FILENAME", "work/logs"),
-	}
-
-	Conf.Admin = &AdminConfig{
-		Username: getEnv("MIS_ADMIN_USERNAME", "admin"),
-		Password: getEnv("MIS_ADMIN_PASSWORD", "admin123"),
-		Email:    getEnv("MIS_ADMIN_EMAIL", "admin@yonghemoli.local"),
+		Level:    getEnv("MIS_LOG_LEVEL", "info"),
+		Filename: getEnv("MIS_LOG_FILENAME", "work/logs"),
 	}
 
 	// ========== 业务数据库 (MySQL, 读写) ==========
 	Conf.DB = &DatabaseConfig{
-		Driver:      getEnv("ANALYTICS_DB_DRIVER", "mysql"),
-		DSN:         getEnv("ANALYTICS_DB_DSN", ""),
-		AutoMigrate: getEnvAsBool("ANALYTICS_DB_AUTO_MIGRATE", true),
+		Driver:      getEnv("MIS_DB_DRIVER", "mysql"),
+		DSN:         getEnv("MIS_DB_DSN", ""),
+		AutoMigrate: getEnvAsBool("MIS_DB_AUTO_MIGRATE", false),
 	}
 
 	log.Printf("应用名称: %s", Conf.Name)
 	log.Printf("运行模式: %s", Conf.Mode)
 	log.Printf("服务地址: http://%s:%s", Conf.Server.Host, Conf.Server.Port)
 	log.Printf("业务数据库驱动: %s (MySQL 读写)", Conf.DB.Driver)
-	log.Printf("内部管理员账号: %s", Conf.Admin.Username)
-	if Conf.TrackAPIKey != "" {
-		log.Printf("Track API Key: %s****", Conf.TrackAPIKey[:4])
-	} else {
-		log.Println("⚠ Track API Key 未设置，上报接口无认证保护")
-	}
 	log.Printf("日志级别: %s", Conf.Log.Level)
 
 	log.Println("=== 配置加载完成 ===")

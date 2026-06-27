@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"yonghemolimis/src/apps/api/chatws"
+	"yonghemolimis/src/dao/db"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -222,6 +225,9 @@ func RegisterRoutes(r gin.IRouter) {
 	r.POST("/orders/:id/cancel", CancelOrder)
 	r.POST("/payments/wechat/prepay", WechatPrepay)
 	r.POST("/payments/wechat/notify", WechatNotify)
+	r.GET("/chat/session", ChatSession)
+	r.GET("/chat/messages", ChatMessages)
+	r.POST("/chat/messages", CreateChatMessage)
 }
 
 func ok(c *gin.Context, data interface{}) {
@@ -493,6 +499,47 @@ func WechatPrepay(c *gin.Context) {
 
 func WechatNotify(c *gin.Context) {
 	ok(c, gin.H{"received": true})
+}
+
+func ChatSession(c *gin.Context) {
+	user := bearerUser(c)
+	sessionID := c.DefaultQuery("sessionId", "chat_"+user.ID)
+	row, err := chatws.TouchSession(sessionID, user.ID, user.NickName)
+	if err != nil {
+		fail(c, err.Error())
+		return
+	}
+	ok(c, gin.H{"item": row})
+}
+
+func ChatMessages(c *gin.Context) {
+	user := bearerUser(c)
+	sessionID := c.DefaultQuery("sessionId", "chat_"+user.ID)
+	rows, err := db.ListChatMessages(sessionID)
+	if err != nil {
+		fail(c, err.Error())
+		return
+	}
+	ok(c, gin.H{"list": rows})
+}
+
+func CreateChatMessage(c *gin.Context) {
+	var req struct {
+		SessionID string `json:"sessionId"`
+		Content   string `json:"content" binding:"required"`
+		MsgType   string `json:"msgType"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, "消息内容不能为空")
+		return
+	}
+	user := bearerUser(c)
+	row, err := chatws.CreateMiniMessage(req.SessionID, user.ID, user.NickName, req.MsgType, req.Content)
+	if err != nil {
+		fail(c, err.Error())
+		return
+	}
+	ok(c, gin.H{"item": row})
 }
 
 func clearDefaultAddress() {

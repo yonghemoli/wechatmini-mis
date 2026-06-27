@@ -4,7 +4,6 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
-	"yonghemolimis/src/cron"
 	"yonghemolimis/src/dao/db"
 	"yonghemolimis/src/logger"
 	"yonghemolimis/src/middlewares"
@@ -58,10 +57,7 @@ func main() {
 		})
 	}
 
-	// 7. 启动定时任务
-	cron.StartScheduler()
-
-	// 8. 启动服务器
+	// 7. 启动服务器
 	addr := ":" + settings.Conf.Server.Port
 	logger.Infof("服务启动在 %s", addr)
 	if err := r.Run(addr); err != nil {

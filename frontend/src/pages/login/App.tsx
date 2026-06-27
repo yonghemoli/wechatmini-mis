@@ -26,8 +26,10 @@ const Login: React.FC = () => {
             setLoggedIn({
               id: u.id,
               username: u.username,
+              name: u.name,
               email: u.email,
               avatar: u.avatar || '',
+              status: u.status,
               isSuperAdmin: u.isSuperAdmin,
               roleId: u.roleId ?? null
             })
@@ -50,8 +52,10 @@ const Login: React.FC = () => {
           setLoggedIn({
             id: u.id,
             username: u.username,
+            name: u.name,
             email: u.email,
             avatar: u.avatar || '',
+            status: u.status,
             isSuperAdmin: u.isSuperAdmin,
             roleId: u.roleId ?? null
           })
@@ -119,7 +123,7 @@ const Login: React.FC = () => {
             marginTop: 16
           }}
         >
-          默认开发账号由 MIS_ADMIN_USERNAME / MIS_ADMIN_PASSWORD 配置
+          默认开发账号来自 sql/init-seed.sql：admin / admin123
         </Text>
       </Card>
     </div>

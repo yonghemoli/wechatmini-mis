@@ -1,54 +1,100 @@
-import React from 'react'
-import { Badge, Button, Col, Row, Space, Statistic, Table, Tag, Typography } from 'antd'
-import { AlertOutlined, CheckCircleOutlined, FileTextOutlined } from '@ant-design/icons'
+import React, { useEffect, useState } from 'react'
+import { Alert, Badge, Button, Col, Empty, Row, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd'
+import { AlertOutlined, CheckCircleOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import type { OrderStatus } from '../misData'
-import { orders, statusColor, statusText, users } from '../misData'
+import {
+  OrderRecord,
+  apiDashboardExceptions,
+  apiDashboardSummary,
+  orderStatusColor,
+  orderStatusText
+} from '@/api'
 
 const { Title, Text } = Typography
 
+type Summary = {
+  todayOrders: number
+  todayRevenue: number
+  pendingCount: number
+  userCount: number
+}
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate()
-  const todayOrders = orders.filter(order => order.createdAt.startsWith('2026-06-20'))
-  const todayRevenue = todayOrders.reduce((sum, order) => sum + order.amount, 0)
-  const pendingOrders = orders.filter(order =>
-    ['pending_service', 'pending_confirm', 'exception'].includes(order.status)
-  )
-  const exceptionOrders = orders.filter(order => order.status === 'exception')
+  const [summary, setSummary] = useState<Summary>({
+    todayOrders: 0,
+    todayRevenue: 0,
+    pendingCount: 0,
+    userCount: 0
+  })
+  const [orders, setOrders] = useState<OrderRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [summaryRes, exceptionsRes] = await Promise.all([
+        apiDashboardSummary(),
+        apiDashboardExceptions()
+      ])
+      setSummary(summaryRes?.data || summary)
+      setOrders(exceptionsRes?.data?.list || [])
+    } catch {
+      setError('工作台数据加载失败')
+      message.error('工作台数据加载失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <div>
-        <Title level={3} style={{ margin: 0 }}>
-          工作台
-        </Title>
-        <Text type="secondary">先处理异常，再看增长。所有关键项控制在一屏内。</Text>
+      <div className="mis-page-title">
+        <div>
+          <Title level={3} style={{ margin: 0 }}>
+            工作台
+          </Title>
+          <Text type="secondary">先处理异常，再看增长。所有关键项控制在一屏内。</Text>
+        </div>
+        <Button icon={<ReloadOutlined />} onClick={load}>
+          刷新
+        </Button>
       </div>
 
-      <Row gutter={[12, 12]}>
-        <Col xs={24} sm={12} lg={6}>
-          <div className="mis-metric">
-            <Statistic title="今日订单量" value={todayOrders.length} suffix="单" />
-          </div>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <div className="mis-metric">
-            <Statistic title="今日营收" value={todayRevenue} prefix="¥" precision={0} />
-          </div>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <div className="mis-metric mis-metric-danger">
-            <Badge count={pendingOrders.length} offset={[10, 0]}>
-              <Statistic title="待处理工单" value={pendingOrders.length} />
-            </Badge>
-          </div>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <div className="mis-metric">
-            <Statistic title="用户总数" value={users.length} suffix="人" />
-          </div>
-        </Col>
-      </Row>
+      {error ? <Alert type="error" showIcon message={error} /> : null}
+
+      <Spin spinning={loading}>
+        <Row gutter={[12, 12]}>
+          <Col xs={24} sm={12} lg={6}>
+            <div className="mis-metric">
+              <Statistic title="今日订单量" value={summary.todayOrders} suffix="单" />
+            </div>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <div className="mis-metric">
+              <Statistic title="今日营收" value={summary.todayRevenue} prefix="¥" precision={0} />
+            </div>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <div className="mis-metric mis-metric-danger">
+              <Badge count={summary.pendingCount} offset={[10, 0]}>
+                <Statistic title="待处理工单" value={summary.pendingCount} />
+              </Badge>
+            </div>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <div className="mis-metric">
+              <Statistic title="用户总数" value={summary.userCount} suffix="人" />
+            </div>
+          </Col>
+        </Row>
+      </Spin>
 
       <div className="mis-panel mis-alert-panel">
         <div className="mis-panel-header">
@@ -57,7 +103,7 @@ const Dashboard: React.FC = () => {
             <Title level={5} style={{ margin: 0 }}>
               异常预警
             </Title>
-            <Badge count={exceptionOrders.length} />
+            <Badge count={orders.filter(order => order.status === 'exception').length} />
           </Space>
           <Button type="primary" danger onClick={() => navigate('/admin/orders')}>
             进入订单处理
@@ -66,40 +112,24 @@ const Dashboard: React.FC = () => {
         <Table
           rowKey="id"
           size="middle"
+          loading={loading}
           pagination={false}
-          dataSource={pendingOrders}
+          dataSource={orders}
+          locale={{ emptyText: <Empty description="暂无待处理订单" /> }}
           columns={[
-            {
-              title: '订单号',
-              dataIndex: 'id',
-              width: 160
-            },
-            {
-              title: '客户',
-              dataIndex: 'customer',
-              width: 100
-            },
-            {
-              title: '服务',
-              dataIndex: 'service'
-            },
-            {
-              title: '预约时间',
-              dataIndex: 'appointmentAt',
-              width: 160
-            },
+            { title: '订单号', dataIndex: 'id', width: 160 },
+            { title: '客户', dataIndex: 'customer', width: 100 },
+            { title: '服务', dataIndex: 'service' },
+            { title: '预约时间', dataIndex: 'appointmentAt', width: 160 },
             {
               title: '状态',
               dataIndex: 'status',
               width: 130,
-              render: (value: OrderStatus) => (
-                <Tag color={statusColor[value]}>{statusText[value]}</Tag>
+              render: (value: OrderRecord['status']) => (
+                <Tag color={orderStatusColor[value]}>{orderStatusText[value]}</Tag>
               )
             },
-            {
-              title: '内部备注',
-              dataIndex: 'internalNote'
-            },
+            { title: '内部备注', dataIndex: 'internalNote' },
             {
               title: '动作',
               width: 120,
@@ -138,14 +168,11 @@ const Dashboard: React.FC = () => {
           <div className="mis-panel">
             <div className="mis-panel-header">
               <Title level={5} style={{ margin: 0 }}>
-                系统升级记录
+                系统状态
               </Title>
               <CheckCircleOutlined style={{ color: '#237804' }} />
             </div>
-            <Text>
-              当前已从游戏分析导航收敛为家政 MIS：工作台、订单、用户、内容商品、数据看板。
-              初期目标是让运营人员快速处理异常，而不是做展示型大屏。
-            </Text>
+            <Text>当前工作台已对接真实 MIS 接口。无业务数据时显示空状态，不再读取本地 mock。</Text>
           </div>
         </Col>
       </Row>

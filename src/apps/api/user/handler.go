@@ -2,10 +2,12 @@ package user
 
 import (
 	"net/http"
+	"strconv"
+
 	"yonghemolimis/src/apps/api/response"
+	"yonghemolimis/src/dao/db"
 	"yonghemolimis/src/middlewares"
 	"yonghemolimis/src/pkgs/session"
-	"yonghemolimis/src/settings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,20 +22,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	admin := settings.Conf.Admin
-	if admin == nil || admin.Username == "" || admin.Password == "" {
-		response.Error(c, http.StatusInternalServerError, "内部管理员账号未配置")
-		return
-	}
-	if req.Username != admin.Username || req.Password != admin.Password {
+	admin, err := db.VerifyAdminCredentials(req.Username, req.Password)
+	if err != nil {
 		response.Error(c, http.StatusUnauthorized, "账号或密码错误")
 		return
 	}
+	_ = db.UpdateAdminLastLogin(admin.ID)
 
-	sid := session.Create(1, admin.Username, admin.Email, "", true, nil)
+	sid := session.Create(admin.ID, admin.Username, admin.Email, "", admin.IsSuperAdmin, admin.RoleID)
 	c.SetCookie(middlewares.SessionCookieName, sid, 86400*7, "/", "", false, true)
 
-	response.OK(c, gin.H{"user": adminUserPayload()})
+	response.OK(c, gin.H{"user": adminPayload(admin)})
 }
 
 func Session(c *gin.Context) {
@@ -81,14 +80,149 @@ func Me(c *gin.Context) {
 	})
 }
 
-func adminUserPayload() gin.H {
-	admin := settings.Conf.Admin
+func ListAccounts(c *gin.Context) {
+	if !requireSuperAdmin(c) {
+		return
+	}
+	rows, err := db.ListAdmins()
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.OK(c, gin.H{"list": rows})
+}
+
+func CreateAccount(c *gin.Context) {
+	if !requireSuperAdmin(c) {
+		return
+	}
+	var req struct {
+		Username     string `json:"username" binding:"required"`
+		Password     string `json:"password" binding:"required"`
+		Name         string `json:"name" binding:"required"`
+		Email        string `json:"email" binding:"required"`
+		RoleID       *int64 `json:"roleId"`
+		IsSuperAdmin bool   `json:"isSuperAdmin"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, "参数错误")
+		return
+	}
+	admin, err := db.CreateAdmin(db.AdminCreateInput{
+		Username:     req.Username,
+		Password:     req.Password,
+		Name:         req.Name,
+		Email:        req.Email,
+		RoleID:       req.RoleID,
+		IsSuperAdmin: req.IsSuperAdmin,
+	})
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.OK(c, gin.H{"user": adminPayload(admin)})
+}
+
+func UpdateAccount(c *gin.Context) {
+	if !requireSuperAdmin(c) {
+		return
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		response.Fail(c, "账户ID错误")
+		return
+	}
+	var req struct {
+		Name         string `json:"name"`
+		Email        string `json:"email"`
+		RoleID       *int64 `json:"roleId"`
+		IsSuperAdmin *bool  `json:"isSuperAdmin"`
+		Status       string `json:"status"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, "参数错误")
+		return
+	}
+	admin, err := db.UpdateAdmin(uint(id), db.AdminUpdateInput{
+		Name:         req.Name,
+		Email:        req.Email,
+		RoleID:       req.RoleID,
+		IsSuperAdmin: req.IsSuperAdmin,
+		Status:       req.Status,
+	})
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.OK(c, gin.H{"user": adminPayload(admin)})
+}
+
+func ResetAccountPassword(c *gin.Context) {
+	if !requireSuperAdmin(c) {
+		return
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		response.Fail(c, "账户ID错误")
+		return
+	}
+	var req struct {
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, "参数错误")
+		return
+	}
+	if err := db.ResetAdminPassword(uint(id), req.Password); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.OKMsg(c, "密码已重置")
+}
+
+func DisableAccount(c *gin.Context) {
+	updateAccountStatus(c, db.AdminStatusBlocked)
+}
+
+func EnableAccount(c *gin.Context) {
+	updateAccountStatus(c, db.AdminStatusActive)
+}
+
+func updateAccountStatus(c *gin.Context, status string) {
+	if !requireSuperAdmin(c) {
+		return
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		response.Fail(c, "账户ID错误")
+		return
+	}
+	if err := db.UpdateAdminStatus(uint(id), status); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.OKMsg(c, "状态已更新")
+}
+
+func requireSuperAdmin(c *gin.Context) bool {
+	isSuperAdmin, _ := c.Get("isSuperAdmin")
+	if ok, _ := isSuperAdmin.(bool); ok {
+		return true
+	}
+	response.Error(c, http.StatusForbidden, "仅超级管理员可操作")
+	return false
+}
+
+func adminPayload(admin *db.AdminDO) gin.H {
 	return gin.H{
-		"id":           1,
+		"id":           admin.ID,
 		"username":     admin.Username,
+		"name":         admin.Name,
 		"email":        admin.Email,
 		"avatar":       "",
-		"isSuperAdmin": true,
-		"roleId":       nil,
+		"isSuperAdmin": admin.IsSuperAdmin,
+		"roleId":       admin.RoleID,
+		"status":       admin.Status,
+		"lastLoginAt":  admin.LastLoginAt,
 	}
 }

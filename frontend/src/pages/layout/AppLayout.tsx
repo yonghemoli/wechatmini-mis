@@ -12,14 +12,18 @@ import {
 } from 'antd'
 import {
   DashboardOutlined,
+  CommentOutlined,
+  HomeOutlined,
   FileTextOutlined,
+  QuestionCircleOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  ShopOutlined,
   TeamOutlined,
   UserOutlined,
-  LineChartOutlined
+  SafetyOutlined,
+  UnorderedListOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, setLoggedOut } from '@/redux'
@@ -45,14 +49,34 @@ const menuItems = [
     label: '用户管理'
   },
   {
-    key: '/admin/content',
-    icon: <ShopOutlined />,
-    label: '内容商品'
+    key: '/admin/service-types',
+    icon: <UnorderedListOutlined />,
+    label: '服务类型管理'
   },
   {
-    key: '/admin/reports',
-    icon: <LineChartOutlined />,
-    label: '数据看板'
+    key: '/admin/services',
+    icon: <AppstoreOutlined />,
+    label: '服务管理'
+  },
+  {
+    key: '/admin/accounts',
+    icon: <SafetyOutlined />,
+    label: '账户管理'
+  },
+  {
+    key: '/admin/shops',
+    icon: <HomeOutlined />,
+    label: '店铺管理'
+  },
+  {
+    key: '/admin/faqs',
+    icon: <QuestionCircleOutlined />,
+    label: '常见问题管理'
+  },
+  {
+    key: '/admin/chat',
+    icon: <CommentOutlined />,
+    label: '客服在线'
   }
 ]
 
@@ -65,6 +89,11 @@ const AppLayout: React.FC = () => {
   const dispatch = useDispatch()
   const user = useSelector((s: RootState) => s.auth.user)
   const { token } = theme.useToken()
+  const isSuperAdmin = !!user?.isSuperAdmin
+
+  const visibleMenuItems = menuItems.filter(item =>
+    item.key === '/admin/accounts' ? isSuperAdmin : true
+  )
 
   useEffect(() => {
     const unsubscribe = onSessionExpired(() => {
@@ -77,7 +106,11 @@ const AppLayout: React.FC = () => {
   }, [dispatch, navigate])
 
   const handleLogout = async () => {
-    await apiLogout()
+    try {
+      await apiLogout()
+    } catch {
+      message.warning('服务端退出请求失败，已清理本地登录态')
+    }
     dispatch(setLoggedOut())
     navigate('/admin/login')
   }
@@ -86,7 +119,13 @@ const AppLayout: React.FC = () => {
     routeKeys.find(key => location.pathname.startsWith(key)) || '/admin/dashboard'
 
   return (
-    <Layout style={{ minHeight: '100vh', background: token.colorBgLayout }}>
+    <Layout
+      style={{
+        height: '100dvh',
+        overflow: 'hidden',
+        background: token.colorBgLayout
+      }}
+    >
       <Sider
         trigger={null}
         collapsible
@@ -94,6 +133,8 @@ const AppLayout: React.FC = () => {
         theme="light"
         width={212}
         style={{
+          height: '100%',
+          overflow: 'hidden',
           borderRight: `1px solid ${token.colorBorderSecondary}`
         }}
       >
@@ -113,15 +154,16 @@ const AppLayout: React.FC = () => {
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
-          items={menuItems}
+          items={visibleMenuItems}
           onClick={({ key }) => navigate(key)}
           style={{ border: 'none', paddingTop: 8 }}
         />
       </Sider>
-      <Layout>
+      <Layout style={{ minWidth: 0, height: '100%', overflow: 'hidden' }}>
         <Header
           style={{
             height: 56,
+            flex: '0 0 56px',
             padding: '0 20px',
             background: token.colorBgContainer,
             display: 'flex',
@@ -172,6 +214,8 @@ const AppLayout: React.FC = () => {
         </Header>
         <Content
           style={{
+            flex: 1,
+            minHeight: 0,
             padding: 20,
             overflow: 'auto'
           }}

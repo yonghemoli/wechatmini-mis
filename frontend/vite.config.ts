@@ -27,7 +27,7 @@ export default defineConfig({
   },
   // 代理
   server: {
-    host: 'local.alemonjs.com',
+    // host: 'local.yonghemoli.com',
     port: 5175,
     proxy: {
       '/api': {
@@ -80,31 +80,12 @@ export default defineConfig({
           'antd-icons-vendor': ['@ant-design/icons'],
           'markdown-vendor': ['markdown-to-jsx'],
           'joyride-vendor': ['react-joyride'],
-          'codemirror-vendor': [
-            '@codemirror/commands',
-            '@codemirror/lang-json',
-            '@codemirror/lang-yaml',
-            '@codemirror/language',
-            '@codemirror/state',
-            '@codemirror/view',
-            '@uiw/codemirror-themes',
-            'codemirror',
-            '@uiw/codemirror-theme-github'
-          ],
           'utils-vendor': [
             'axios',
             'dayjs',
             'js-yaml',
             'lodash-es',
             'classnames'
-          ],
-          'xterm-vendor': [
-            'xterm',
-            'xterm-addon-fit',
-            'xterm-addon-search',
-            'xterm-addon-serialize',
-            'xterm-addon-unicode11',
-            'xterm-addon-web-links'
           ]
         }
       }

@@ -16,7 +16,7 @@ func Init() {
 	logDir := "logs"
 	_ = os.MkdirAll(logDir, 0755)
 
-	logPath := filepath.Join(logDir, "analytics.log")
+	logPath := filepath.Join(logDir, "mis.log")
 	writer, _ := rotatelogs.New(
 		logPath+".%Y%m%d",
 		rotatelogs.WithLinkName(logPath),

@@ -8,9 +8,9 @@ const api = axios.create({
   withCredentials: true // 自动发送 cookie
 })
 
-export const LOGIN_FLAG_KEY = 'mis:logged_in'
+export { api as axiosInstance }
 
-export const QQ_TEMPLATE_KEY = 'analytics:template'
+export const LOGIN_FLAG_KEY = 'mis:logged_in'
 
 const getContentType = (method: string) => {
   if (method === 'DELETE') return 'multipart/form-data'
@@ -34,9 +34,10 @@ let count = 0
 export const server = async (
   config: AxiosRequestConfig & {
     method: MethodType
+    silent?: boolean
   }
 ): Promise<any> => {
-  const { headers, ...cfg } = config
+  const { headers, silent, ...cfg } = config
   // 判断请求是否符合规范
   if (!Method[cfg.method]) {
     message.error('请求方法不正确，请检查请求配置')
@@ -57,16 +58,18 @@ export const server = async (
       .catch(err => {
         if (err?.response?.status === 401) {
           localStorage.removeItem(LOGIN_FLAG_KEY)
-          if (window.location.pathname === '/admin/login') {
+          if (silent) {
+            // ignored
+          } else if (window.location.pathname === '/admin/login') {
             window.location.href = '/admin/login'
           } else {
             emitSessionExpired()
           }
-        } else if (err?.response?.data?.msg) {
+        } else if (!silent && err?.response?.data?.msg) {
           message.error(err.response.data.msg)
-        } else if (err?.response?.status === 404) {
+        } else if (!silent && err?.response?.status === 404) {
           message.error('API未找到，请检查网络连接或联系管理员')
-        } else if (err?.response?.status === 500) {
+        } else if (!silent && err?.response?.status === 500) {
           count++
           if (count > 15) {
             window.location.href = '/admin/login'
@@ -85,9 +88,10 @@ export const server = async (
 export const request = async (
   config: AxiosRequestConfig & {
     method: MethodType
+    silent?: boolean
   }
 ): Promise<any> => {
-  const { headers, ...cfg } = config
+  const { headers, silent, ...cfg } = config
   // 判断请求是否符合规范
   if (!Method[cfg.method]) {
     message.error('请求方法不正确，请检查请求配置')
@@ -109,16 +113,18 @@ export const request = async (
         if (err?.response?.status === 401) {
           localStorage.removeItem(LOGIN_FLAG_KEY)
           // 如果已在登录页则跳转，否则弹出登录弹窗
-          if (window.location.pathname === '/admin/login') {
+          if (silent) {
+            // ignored
+          } else if (window.location.pathname === '/admin/login') {
             window.location.href = '/admin/login'
           } else {
             emitSessionExpired()
           }
-        } else if (err?.response?.data?.msg) {
+        } else if (!silent && err?.response?.data?.msg) {
           message.error(err.response.data.msg)
-        } else if (err?.response?.status === 404) {
+        } else if (!silent && err?.response?.status === 404) {
           message.error('API未找到，请检查网络连接或联系管理员')
-        } else if (err?.response?.status === 500) {
+        } else if (!silent && err?.response?.status === 500) {
           count++
           if (count > 15) {
             window.location.href = '/admin/login'

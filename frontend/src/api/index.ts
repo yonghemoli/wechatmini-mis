@@ -1,332 +1,340 @@
-import { server } from './base'
+import { axiosInstance, server } from './base'
+
+const download = async (url: string, filename: string) => {
+  const res = await axiosInstance({ url, method: 'GET', responseType: 'blob' })
+  const blobUrl = URL.createObjectURL(res.data)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(blobUrl)
+}
 
 // ==================== 内部认证 ====================
 export const apiLogin = (data: { username: string; password: string }) =>
   server({ url: '/login', method: 'POST', data })
 
-export const apiSession = () => server({ url: '/session', method: 'GET' })
+export const apiSession = () =>
+  server({ url: '/session', method: 'GET', silent: true })
 
 export const apiLogout = () => server({ url: '/logout', method: 'POST' })
 
 export const apiGetMe = () => server({ url: '/me', method: 'GET' })
 
-// ==================== 仪表盘 ====================
-export const apiGetOverview = (source = 'official') =>
-  server({ url: `/dashboard/overview?source=${source}`, method: 'GET' })
+// ==================== 内部账户 ====================
+export const apiListAdminAccounts = () =>
+  server({ url: '/admin/accounts', method: 'GET' })
 
-export const apiGetDistribution = (field: string) =>
-  server({ url: `/dashboard/distribution?field=${field}`, method: 'GET' })
+export const apiCreateAdminAccount = (data: {
+  username: string
+  password: string
+  name: string
+  email: string
+  roleId?: number | null
+  isSuperAdmin?: boolean
+}) => server({ url: '/admin/accounts', method: 'POST', data })
 
-export const apiGetDAUTrend = (days = 30) =>
-  server({ url: `/dashboard/dau-trend?days=${days}`, method: 'GET' })
+export const apiUpdateAdminAccount = (
+  id: number,
+  data: {
+    name: string
+    email: string
+    roleId?: number | null
+    isSuperAdmin?: boolean
+    status?: string
+  }
+) => server({ url: `/admin/accounts/${id}`, method: 'PUT', data })
 
-export const apiGetRealmDistribution = () =>
-  server({ url: '/dashboard/realm-distribution', method: 'GET' })
+export const apiResetAdminPassword = (id: number, password: string) =>
+  server({
+    url: `/admin/accounts/${id}/reset-password`,
+    method: 'POST',
+    data: { password }
+  })
 
-// ==================== 用户画像 ====================
-export const apiGetProfiles = (params: {
+export const apiDisableAdminAccount = (id: number) =>
+  server({ url: `/admin/accounts/${id}/disable`, method: 'POST' })
+
+export const apiEnableAdminAccount = (id: number) =>
+  server({ url: `/admin/accounts/${id}/enable`, method: 'POST' })
+
+export type OrderStatus =
+  | 'pending_service'
+  | 'pending_confirm'
+  | 'completed'
+  | 'exception'
+  | 'refunded'
+
+export const orderStatusText: Record<OrderStatus, string> = {
+  pending_service: '待服务',
+  pending_confirm: '待核销',
+  completed: '已完成',
+  exception: '异常待处理',
+  refunded: '已退款'
+}
+
+export const orderStatusColor: Record<OrderStatus, string> = {
+  pending_service: 'processing',
+  pending_confirm: 'warning',
+  completed: 'success',
+  exception: 'error',
+  refunded: 'default'
+}
+
+export type OrderRecord = {
+  id: string
+  customer: string
+  phone: string
+  service: string
+  amount: number
+  status: OrderStatus
+  source: string
+  appointmentAt: string
+  createdAt: string
+  staff: string
+  internalNote: string
+}
+
+export type UserRecord = {
+  id: string
+  avatar: string
+  nickname: string
+  totalSpent: number
+  lastOrderAt: string
+  status: 'active' | 'banned'
+  createdAt: string
+}
+
+export const apiDashboardSummary = () =>
+  server({ url: '/dashboard/summary', method: 'GET' })
+
+export const apiDashboardExceptions = () =>
+  server({ url: '/dashboard/exceptions', method: 'GET' })
+
+export const apiListOrders = (params: {
+  status?: string
+  keyword?: string
+  start?: string
+  end?: string
   page?: number
-  page_size?: number
-  lifecycle_stage?: string
-  pay_tier?: string
-  play_style?: string
-  min_churn_risk?: number
+  size?: number
 }) => {
   const query = new URLSearchParams()
-  if (params.page) query.set('page', String(params.page))
-  if (params.page_size) query.set('page_size', String(params.page_size))
-  if (params.lifecycle_stage)
-    query.set('lifecycle_stage', params.lifecycle_stage)
-  if (params.pay_tier) query.set('pay_tier', params.pay_tier)
-  if (params.play_style) query.set('play_style', params.play_style)
-  if (params.min_churn_risk)
-    query.set('min_churn_risk', String(params.min_churn_risk))
-  return server({ url: `/profiles?${query}`, method: 'GET' })
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
+  })
+  return server({ url: `/orders?${query.toString()}`, method: 'GET' })
 }
 
-export const apiGetProfile = (uid: number) =>
-  server({ url: `/profiles/${uid}`, method: 'GET' })
+export const apiConfirmOrder = (id: string) =>
+  server({ url: `/orders/${id}/confirm`, method: 'POST' })
 
-export const apiRefreshProfile = (uid: number) =>
-  server({ url: `/profiles/${uid}/refresh`, method: 'POST' })
+export const apiRefundOrder = (id: string, reason = '') =>
+  server({ url: `/orders/${id}/refund`, method: 'POST', data: { reason } })
 
-export const apiRefreshAllProfiles = () =>
-  server({ url: '/profiles/refresh-all', method: 'POST' })
+export const apiUpdateOrderNote = (id: string, internalNote: string) =>
+  server({ url: `/orders/${id}/note`, method: 'PUT', data: { internalNote } })
 
-export const apiGetSnapshots = (uid: number, start?: string, end?: string) => {
+export const apiExportOrders = (params: {
+  status?: string
+  keyword?: string
+  start?: string
+  end?: string
+}) => {
   const query = new URLSearchParams()
-  if (start) query.set('start', start)
-  if (end) query.set('end', end)
-  return server({ url: `/profiles/${uid}/snapshots?${query}`, method: 'GET' })
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) query.set(key, String(value))
+  })
+  return download(`/orders/export?${query.toString()}`, '家政订单列表.csv')
 }
 
-// ==================== 分群 ====================
-export const apiGetSegments = () => server({ url: '/segments', method: 'GET' })
+export const apiListUsers = () => server({ url: '/users', method: 'GET' })
 
-export const apiCreateSegment = (data: {
+export const apiBanUser = (id: string) =>
+  server({ url: `/users/${id}/ban`, method: 'POST' })
+
+export const apiUnbanUser = (id: string) =>
+  server({ url: `/users/${id}/unban`, method: 'POST' })
+
+export const apiExportUsers = () => download('/users/export', '家政用户列表.csv')
+
+export type ServiceTypeRecord = {
+  id: number
   name: string
-  description?: string
-  rules_json: string
-}) => server({ url: '/segments', method: 'POST', data })
-
-export const apiDeleteSegment = (id: number) =>
-  server({ url: `/segments/${id}`, method: 'DELETE' })
-
-export const apiExecuteSegment = (id: number) =>
-  server({ url: `/segments/${id}/execute`, method: 'GET' })
-
-export const apiPreviewSegment = (rules_json: string) =>
-  server({ url: '/segments/preview', method: 'POST', data: { rules_json } })
-
-// ==================== 预警 ====================
-export const apiGetHighChurnUsers = (threshold = 70, limit = 50) =>
-  server({
-    url: `/alerts/churn?threshold=${threshold}&limit=${limit}`,
-    method: 'GET'
-  })
-
-export const apiGetStuckUsers = (limit = 50) =>
-  server({ url: `/alerts/stuck?limit=${limit}`, method: 'GET' })
-
-export const apiGetProfileStats = () =>
-  server({ url: '/alerts/stats', method: 'GET' })
-
-export const apiGetResourceAlertUsers = (limit = 50) =>
-  server({ url: `/alerts/resource?limit=${limit}`, method: 'GET' })
-
-export const apiGetNewbieAtRisk = (threshold = 40, limit = 50) =>
-  server({
-    url: `/alerts/newbie-risk?threshold=${threshold}&limit=${limit}`,
-    method: 'GET'
-  })
-
-export const apiGetWhaleChurn = (threshold = 50, limit = 50) =>
-  server({
-    url: `/alerts/whale-churn?threshold=${threshold}&limit=${limit}`,
-    method: 'GET'
-  })
-
-export const apiGetBotSuspects = (limit = 50) =>
-  server({ url: `/alerts/bot-suspects?limit=${limit}`, method: 'GET' })
-
-// ==================== 功能分析 ====================
-export const apiGetFeatureScores = (category?: string) => {
-  const q = category ? `?category=${encodeURIComponent(category)}` : ''
-  return server({ url: `/features/scores${q}`, method: 'GET' })
+  description: string
+  sortOrder: number
+  status: 'active' | 'disabled'
 }
 
-export const apiGetFeatureTrend = (name: string, days = 30) =>
-  server({
-    url: `/features/trend?name=${encodeURIComponent(name)}&days=${days}`,
-    method: 'GET'
-  })
+export type ServiceRecord = {
+  id: number
+  typeId: number
+  typeName: string
+  name: string
+  image: string
+  price: number
+  unit: string
+  description: string
+  visible: boolean
+  sortOrder: number
+  updatedAt: string
+}
 
-export const apiGetFeatureCategories = (days = 30) =>
-  server({ url: `/features/categories?days=${days}`, method: 'GET' })
+export type ShopRecord = {
+  id: number
+  name: string
+  contactName: string
+  phone: string
+  address: string
+  businessHours: string
+  status: 'open' | 'closed'
+  remark: string
+}
 
-export const apiGetFeatureTop = (days = 7, limit = 20) =>
-  server({ url: `/features/top?days=${days}&limit=${limit}`, method: 'GET' })
+export type FAQRecord = {
+  id: number
+  question: string
+  answer: string
+  category: string
+  sortOrder: number
+  visible: boolean
+}
 
-export const apiGetFeatureSceneDist = (days = 30) =>
-  server({ url: `/features/scene-dist?days=${days}`, method: 'GET' })
+export type ChatSessionRecord = {
+  id: string
+  userId: string
+  userName: string
+  userAvatar: string
+  status: 'open' | 'closed'
+  lastMessage: string
+  unreadCount: number
+  updatedAt: string
+}
 
-export const apiGetFeatureChannelTop = (days = 7, limit = 20) =>
-  server({
-    url: `/features/channel-top?days=${days}&limit=${limit}`,
-    method: 'GET'
-  })
+export type ChatMessageRecord = {
+  id: number
+  sessionId: string
+  sender: 'user' | 'admin'
+  msgType: string
+  content: string
+  isRead: boolean
+  createdAt: string
+}
 
-export const apiGetFeaturePlatformDist = (days = 30) =>
-  server({ url: `/features/platform-dist?days=${days}`, method: 'GET' })
+export type ChatWsEvent =
+  | {
+      type: 'message'
+      sessionId: string
+      message: ChatMessageRecord
+    }
+  | {
+      type: 'session'
+      sessionId: string
+      session: ChatSessionRecord
+    }
+  | {
+      type: 'error'
+      error: string
+    }
+  | {
+      type: 'pong'
+    }
 
-export const apiGetFeatureSceneFeatureTop = (
-  scene: string,
-  days = 7,
-  limit = 15
-) =>
-  server({
-    url: `/features/scene-feature-top?scene=${encodeURIComponent(scene)}&days=${days}&limit=${limit}`,
-    method: 'GET'
-  })
+export const getWsBaseUrl = () => {
+  const { protocol, host } = window.location
+  return `${protocol === 'https:' ? 'wss:' : 'ws:'}//${host}/api/v1`
+}
 
-export const apiGetFeatureSceneTrend = (days = 30) =>
-  server({ url: `/features/scene-trend?days=${days}`, method: 'GET' })
+export const apiListServiceTypes = (keyword = '') =>
+  server({ url: `/service-types?keyword=${encodeURIComponent(keyword)}`, method: 'GET' })
 
-// ==================== 游戏数据统计 ====================
-export const apiGetGameOverview = () =>
-  server({ url: '/gamestat/overview', method: 'GET' })
+export const apiCreateServiceType = (data: Omit<ServiceTypeRecord, 'id'>) =>
+  server({ url: '/service-types', method: 'POST', data })
 
-export const apiGetPlayerRanking = (sort = 'realm', limit = 50) =>
-  server({
-    url: `/gamestat/player-ranking?sort=${sort}&limit=${limit}`,
-    method: 'GET'
-  })
+export const apiUpdateServiceType = (id: number, data: Omit<ServiceTypeRecord, 'id'>) =>
+  server({ url: `/service-types/${id}`, method: 'PUT', data })
 
-export const apiGetGuildRanking = (sort = 'prestige', limit = 30) =>
-  server({
-    url: `/gamestat/guild-ranking?sort=${sort}&limit=${limit}`,
-    method: 'GET'
-  })
+export const apiDeleteServiceType = (id: number) =>
+  server({ url: `/service-types/${id}`, method: 'DELETE' })
 
-export const apiGetNewUsersTrend = (days = 30) =>
-  server({ url: `/gamestat/new-users?days=${days}`, method: 'GET' })
+export const apiEnableServiceType = (id: number) =>
+  server({ url: `/service-types/${id}/enable`, method: 'POST' })
 
-export const apiGetRealmStages = () =>
-  server({ url: '/gamestat/realm-stages', method: 'GET' })
+export const apiDisableServiceType = (id: number) =>
+  server({ url: `/service-types/${id}/disable`, method: 'POST' })
 
-export const apiGetRealmChurn = (days = 7) =>
-  server({ url: `/gamestat/realm-churn?days=${days}`, method: 'GET' })
+export const apiListServices = (params: { typeId?: number; keyword?: string }) => {
+  const query = new URLSearchParams()
+  if (params.typeId) query.set('typeId', String(params.typeId))
+  if (params.keyword) query.set('keyword', params.keyword)
+  return server({ url: `/services?${query.toString()}`, method: 'GET' })
+}
 
-export const apiGetPaymentOverview = (source = 'official') =>
-  server({ url: `/gamestat/payment?source=${source}`, method: 'GET' })
+export const apiCreateService = (data: Omit<ServiceRecord, 'id' | 'typeName' | 'updatedAt'>) =>
+  server({ url: '/services', method: 'POST', data })
 
-export const apiGetRevenueTrend = (days = 30, source = 'official') =>
-  server({
-    url: `/gamestat/revenue-trend?days=${days}&source=${source}`,
-    method: 'GET'
-  })
+export const apiUpdateService = (
+  id: number,
+  data: Omit<ServiceRecord, 'id' | 'typeName' | 'updatedAt'>
+) => server({ url: `/services/${id}`, method: 'PUT', data })
 
-export const apiGetPackageStats = (days = 0, source = 'official') =>
-  server({
-    url: `/gamestat/packages?days=${days}&source=${source}`,
-    method: 'GET'
-  })
+export const apiDeleteService = (id: number) =>
+  server({ url: `/services/${id}`, method: 'DELETE' })
 
-// ==================== 留存分析 ====================
-export const apiGetRetention = (days = 30) =>
-  server({ url: `/retention?days=${days}`, method: 'GET' })
+export const apiPublishService = (id: number) =>
+  server({ url: `/services/${id}/publish`, method: 'POST' })
 
-// ==================== 转化漏斗 ====================
-export const apiGetFunnel = (days = 0) =>
-  server({ url: `/funnel?days=${days}`, method: 'GET' })
+export const apiUnpublishService = (id: number) =>
+  server({ url: `/services/${id}/unpublish`, method: 'POST' })
 
-// ==================== 境界进阶分析 ====================
-export const apiGetRealmProgress = (inactiveDays = 7) =>
-  server({
-    url: `/realm-progress?inactive_days=${inactiveDays}`,
-    method: 'GET'
-  })
+export const apiExportServices = () => download('/services/export', '家政服务列表.csv')
 
-export const apiGetRealmPayCorrelation = () =>
-  server({ url: '/realm-progress/pay-correlation', method: 'GET' })
+export const apiListShops = () => server({ url: '/shops', method: 'GET' })
 
-// ==================== 经济健康度分析 ====================
-export const apiGetEconomyHealth = (days = 30) =>
-  server({ url: `/economy-health?days=${days}`, method: 'GET' })
+export const apiCreateShop = (data: Omit<ShopRecord, 'id'>) =>
+  server({ url: '/shops', method: 'POST', data })
 
-export const apiGetCurrencyTrend = (currency: string, days = 30) =>
-  server({
-    url: `/economy-health/currency-trend?currency=${currency}&days=${days}`,
-    method: 'GET'
-  })
+export const apiUpdateShop = (id: number, data: Omit<ShopRecord, 'id'>) =>
+  server({ url: `/shops/${id}`, method: 'PUT', data })
 
-// ==================== 副本分析 ====================
-export const apiGetDungeonAnalysis = (days = 30) =>
-  server({ url: `/dungeon-yonghemolimis?days=${days}`, method: 'GET' })
+export const apiDeleteShop = (id: number) =>
+  server({ url: `/shops/${id}`, method: 'DELETE' })
 
-export const apiGetDungeonRealmDist = (days = 30) =>
-  server({ url: `/dungeon-yonghemolimis/realm-dist?days=${days}`, method: 'GET' })
+export const apiOpenShop = (id: number) =>
+  server({ url: `/shops/${id}/open`, method: 'POST' })
 
-// ==================== 宗门健康度 ====================
-export const apiGetGuildHealth = (inactiveDays = 7) =>
-  server({ url: `/guild-health?inactive_days=${inactiveDays}`, method: 'GET' })
+export const apiCloseShop = (id: number) =>
+  server({ url: `/shops/${id}/close`, method: 'POST' })
 
-// ==================== 社交网络 ====================
-export const apiGetSocialNetwork = () =>
-  server({ url: '/social-network', method: 'GET' })
+export const apiListFAQs = (category = '') =>
+  server({ url: `/faqs?category=${encodeURIComponent(category)}`, method: 'GET' })
 
-// ==================== 手动刷新 ====================
-export const apiRefreshDashboard = () =>
-  server({ url: '/refresh/dashboard', method: 'POST' })
+export const apiCreateFAQ = (data: Omit<FAQRecord, 'id'>) =>
+  server({ url: '/faqs', method: 'POST', data })
 
-export const apiRefreshFeatures = () =>
-  server({ url: '/refresh/features', method: 'POST' })
+export const apiUpdateFAQ = (id: number, data: Omit<FAQRecord, 'id'>) =>
+  server({ url: `/faqs/${id}`, method: 'PUT', data })
 
-export const apiRefreshAll = () =>
-  server({ url: '/refresh/all', method: 'POST' })
+export const apiDeleteFAQ = (id: number) =>
+  server({ url: `/faqs/${id}`, method: 'DELETE' })
 
-// ==================== 活跃度分析 ====================
-export const apiGetPlayerHourly = (uid: number, days = 7) =>
-  server({ url: `/activity/player/${uid}/hourly?days=${days}`, method: 'GET' })
+export const apiPublishFAQ = (id: number) =>
+  server({ url: `/faqs/${id}/publish`, method: 'POST' })
 
-export const apiGetPlayerDaily = (uid: number, days = 30) =>
-  server({ url: `/activity/player/${uid}/daily?days=${days}`, method: 'GET' })
+export const apiUnpublishFAQ = (id: number) =>
+  server({ url: `/faqs/${id}/unpublish`, method: 'POST' })
 
-export const apiGetPlayerPeak = (uid: number, days = 30) =>
-  server({ url: `/activity/player/${uid}/peak?days=${days}`, method: 'GET' })
+export const apiListChatSessions = () =>
+  server({ url: '/chat/sessions', method: 'GET' })
 
-export const apiCheckPlayerBot = (uid: number, days = 14) =>
-  server({
-    url: `/activity/player/${uid}/bot-check?days=${days}`,
-    method: 'GET'
-  })
+export const apiListChatMessages = (id: string) =>
+  server({ url: `/chat/sessions/${id}/messages`, method: 'GET' })
 
-export const apiGetGlobalHourly = (days = 7) =>
-  server({ url: `/activity/global/hourly?days=${days}`, method: 'GET' })
+export const apiSendChatMessage = (id: string, content: string) =>
+  server({ url: `/chat/sessions/${id}/messages`, method: 'POST', data: { content, msgType: 'text' } })
 
-export const apiGetGlobalPeak = (days = 30) =>
-  server({ url: `/activity/global/peak?days=${days}`, method: 'GET' })
+export const apiCloseChatSession = (id: string) =>
+  server({ url: `/chat/sessions/${id}/close`, method: 'POST' })
 
-export const apiRefreshActivity = (days = 3) =>
-  server({ url: `/activity/refresh?days=${days}`, method: 'POST' })
-
-// ==================== 境界卡点分析 ====================
-export const apiGetRealmBottleneck = (inactiveDays = 7) =>
-  server({
-    url: `/realm-bottleneck?inactive_days=${inactiveDays}`,
-    method: 'GET'
-  })
-
-// ==================== 通天塔与主线进度 ====================
-export const apiGetTowerStory = (days = 30) =>
-  server({ url: `/tower-story?days=${days}`, method: 'GET' })
-
-export const apiGetStageDifficulty = (chapter = 0) =>
-  server({
-    url: `/tower-story/stage-difficulty?chapter=${chapter}`,
-    method: 'GET'
-  })
-
-// ==================== 付费行为深度分析 ====================
-export const apiGetPayAnalysis = (days = 30) =>
-  server({ url: `/pay-yonghemolimis?days=${days}`, method: 'GET' })
-
-// ==================== 装备与战力分析 ====================
-export const apiGetEquipAnalysis = () =>
-  server({ url: '/equip-yonghemolimis', method: 'GET' })
-
-// ==================== 交易市场健康度 ====================
-export const apiGetMarketHealth = (days = 30) =>
-  server({ url: `/market-health?days=${days}`, method: 'GET' })
-
-// ==================== 签到与活跃任务 ====================
-export const apiGetCheckInAnalysis = (days = 30) =>
-  server({ url: `/checkin-yonghemolimis?days=${days}`, method: 'GET' })
-
-// ==================== 闭关修炼分析 ====================
-export const apiGetSeclusionAnalysis = (days = 30) =>
-  server({ url: `/seclusion-yonghemolimis?days=${days}`, method: 'GET' })
-
-// ==================== 功法/技能分析 ====================
-export const apiGetSkillAnalysis = () =>
-  server({ url: '/skill-yonghemolimis', method: 'GET' })
-
-// ==================== 炼丹/炼器分析 ====================
-export const apiGetCraftAnalysis = () =>
-  server({ url: '/craft-yonghemolimis', method: 'GET' })
-
-// ==================== 新人引导漏斗 ====================
-export const apiGetNewcomerFunnel = () =>
-  server({ url: '/newcomer-funnel', method: 'GET' })
-
-// ==================== 道侣系统分析 ====================
-export const apiGetCompanionAnalysis = () =>
-  server({ url: '/companion-yonghemolimis', method: 'GET' })
-
-// ==================== 本命物系统分析 ====================
-export const apiGetSoulArtifactAnalysis = () =>
-  server({ url: '/soul-artifact-yonghemolimis', method: 'GET' })
-
-// ==================== 商店消费分析 ====================
-export const apiGetShopAnalysis = () =>
-  server({ url: '/shop-yonghemolimis', method: 'GET' })
+export const apiReadChatSession = (id: string) =>
+  server({ url: `/chat/sessions/${id}/read`, method: 'POST' })

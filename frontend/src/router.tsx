@@ -8,8 +8,12 @@ const AppLayout = lazy(() => import('./pages/layout/AppLayout'))
 const Dashboard = lazy(() => import('./pages/dashboard/App'))
 const Orders = lazy(() => import('./pages/orders/App'))
 const Users = lazy(() => import('./pages/users/App'))
-const Content = lazy(() => import('./pages/content/App'))
-const Reports = lazy(() => import('./pages/reports/App'))
+const ServiceTypes = lazy(() => import('./pages/serviceTypes/App'))
+const Services = lazy(() => import('./pages/services/App'))
+const Accounts = lazy(() => import('./pages/accounts/App'))
+const Shops = lazy(() => import('./pages/shops/App'))
+const FAQs = lazy(() => import('./pages/faqs/App'))
+const Chat = lazy(() => import('./pages/chat/App'))
 
 const wrap = (node: ReactNode) => <WithSuspense>{node}</WithSuspense>
 
@@ -43,12 +47,28 @@ const router = createBrowserRouter([
         element: wrap(<Users />)
       },
       {
-        path: 'content',
-        element: wrap(<Content />)
+        path: 'service-types',
+        element: wrap(<ServiceTypes />)
       },
       {
-        path: 'reports',
-        element: wrap(<Reports />)
+        path: 'services',
+        element: wrap(<Services />)
+      },
+      {
+        path: 'accounts',
+        element: wrap(<Accounts />)
+      },
+      {
+        path: 'shops',
+        element: wrap(<Shops />)
+      },
+      {
+        path: 'faqs',
+        element: wrap(<FAQs />)
+      },
+      {
+        path: 'chat',
+        element: wrap(<Chat />)
       }
     ]
   },

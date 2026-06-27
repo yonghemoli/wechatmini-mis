@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
+  Alert,
   Button,
   DatePicker,
+  Empty,
   Input,
   Modal,
   Select,
@@ -11,39 +13,81 @@ import {
   Typography,
   message
 } from 'antd'
-import { CheckCircleOutlined, CloseCircleOutlined, DownloadOutlined } from '@ant-design/icons'
-import type { OrderRecord, OrderStatus } from '../misData'
-import { exportCsv, orders as seedOrders, statusColor, statusText } from '../misData'
+import { CheckCircleOutlined, CloseCircleOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons'
+import type { Dayjs } from 'dayjs'
+import {
+  OrderRecord,
+  OrderStatus,
+  apiConfirmOrder,
+  apiExportOrders,
+  apiListOrders,
+  apiRefundOrder,
+  apiUpdateOrderNote,
+  orderStatusColor,
+  orderStatusText
+} from '@/api'
 
 const { RangePicker } = DatePicker
 const { Title, Text } = Typography
 
 const Orders: React.FC = () => {
-  const [orders, setOrders] = useState<OrderRecord[]>(seedOrders)
+  const [orders, setOrders] = useState<OrderRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [size, setSize] = useState(20)
   const [status, setStatus] = useState<OrderStatus | 'all'>('all')
   const [keyword, setKeyword] = useState('')
+  const [range, setRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
   const [editingOrder, setEditingOrder] = useState<OrderRecord | null>(null)
   const [note, setNote] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const filteredOrders = useMemo(
-    () =>
-      orders.filter(order => {
-        const matchStatus = status === 'all' || order.status === status
-        const matchKeyword =
-          !keyword ||
-          [order.id, order.customer, order.phone, order.service, order.staff].some(value =>
-            value.toLowerCase().includes(keyword.toLowerCase())
-          )
-        return matchStatus && matchKeyword
-      }),
-    [orders, status, keyword]
-  )
+  const queryParams = {
+    status,
+    keyword,
+    start: range?.[0]?.format('YYYY-MM-DD'),
+    end: range?.[1]?.format('YYYY-MM-DD'),
+    page,
+    size
+  }
 
-  const updateStatus = (id: string, nextStatus: OrderStatus) => {
-    setOrders(current =>
-      current.map(order => (order.id === id ? { ...order, status: nextStatus } : order))
-    )
-    message.success(nextStatus === 'completed' ? '订单已核销' : '订单已异常关闭/退款')
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await apiListOrders(queryParams)
+      setOrders(res?.data?.list || [])
+      setTotal(res?.data?.total || 0)
+    } catch {
+      setError('订单列表加载失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [status, page, size])
+
+  const search = () => {
+    setPage(1)
+    load()
+  }
+
+  const updateStatus = async (id: string, nextStatus: OrderStatus) => {
+    try {
+      if (nextStatus === 'completed') {
+        await apiConfirmOrder(id)
+        message.success('订单已核销')
+      } else {
+        await apiRefundOrder(id, '后台异常关闭/退款')
+        message.success('订单已异常关闭/退款')
+      }
+      load()
+    } catch {
+      message.error('订单状态更新失败')
+    }
   }
 
   const openNote = (order: OrderRecord) => {
@@ -51,35 +95,25 @@ const Orders: React.FC = () => {
     setNote(order.internalNote)
   }
 
-  const saveNote = () => {
+  const saveNote = async () => {
     if (!editingOrder) return
-    setOrders(current =>
-      current.map(order =>
-        order.id === editingOrder.id ? { ...order, internalNote: note } : order
-      )
-    )
-    setEditingOrder(null)
-    message.success('内部备注已保存')
+    try {
+      await apiUpdateOrderNote(editingOrder.id, note)
+      setEditingOrder(null)
+      message.success('内部备注已保存')
+      load()
+    } catch {
+      message.error('内部备注保存失败')
+    }
   }
 
-  const exportOrders = () => {
-    exportCsv(
-      '家政订单列表.csv',
-      filteredOrders.map(order => ({
-        订单号: order.id,
-        客户: order.customer,
-        手机: order.phone,
-        服务: order.service,
-        金额: order.amount,
-        状态: statusText[order.status],
-        来源: order.source,
-        预约时间: order.appointmentAt,
-        创建时间: order.createdAt,
-        服务人员: order.staff,
-        内部备注: order.internalNote
-      }))
-    )
-  }
+  const exportOrders = () =>
+    apiExportOrders({
+      status,
+      keyword,
+      start: range?.[0]?.format('YYYY-MM-DD'),
+      end: range?.[1]?.format('YYYY-MM-DD')
+    })
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -90,16 +124,26 @@ const Orders: React.FC = () => {
           </Title>
           <Text type="secondary">全量订单操作区，优先解决待服务、待核销和异常退款。</Text>
         </div>
-        <Button icon={<DownloadOutlined />} onClick={exportOrders}>
-          导出 Excel
-        </Button>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={load}>
+            刷新
+          </Button>
+          <Button icon={<DownloadOutlined />} onClick={exportOrders}>
+            导出 Excel
+          </Button>
+        </Space>
       </div>
+
+      {error ? <Alert type="error" showIcon message={error} /> : null}
 
       <div className="mis-toolbar">
         <Select
           value={status}
           style={{ width: 160 }}
-          onChange={setStatus}
+          onChange={value => {
+            setStatus(value)
+            setPage(1)
+          }}
           options={[
             { label: '全部状态', value: 'all' },
             { label: '待服务', value: 'pending_service' },
@@ -109,71 +153,48 @@ const Orders: React.FC = () => {
             { label: '已退款', value: 'refunded' }
           ]}
         />
-        <RangePicker />
+        <RangePicker value={range} onChange={value => setRange(value)} />
         <Input.Search
           allowClear
           placeholder="搜索订单号、客户、服务人员"
           style={{ maxWidth: 320 }}
           value={keyword}
           onChange={event => setKeyword(event.target.value)}
+          onSearch={search}
         />
       </div>
 
       <Table
         rowKey="id"
-        dataSource={filteredOrders}
+        loading={loading}
+        dataSource={orders}
         scroll={{ x: 1180 }}
+        locale={{ emptyText: <Empty description="暂无订单" /> }}
+        pagination={{
+          current: page,
+          pageSize: size,
+          total,
+          showSizeChanger: true,
+          onChange: (nextPage, nextSize) => {
+            setPage(nextPage)
+            setSize(nextSize)
+          }
+        }}
         columns={[
-          {
-            title: '订单号',
-            dataIndex: 'id',
-            fixed: 'left',
-            width: 160
-          },
-          {
-            title: '客户',
-            dataIndex: 'customer',
-            width: 100
-          },
-          {
-            title: '手机',
-            dataIndex: 'phone',
-            width: 120
-          },
-          {
-            title: '服务',
-            dataIndex: 'service',
-            width: 150
-          },
-          {
-            title: '金额',
-            dataIndex: 'amount',
-            width: 90,
-            render: (value: number) => `¥${value}`
-          },
+          { title: '订单号', dataIndex: 'id', fixed: 'left', width: 160 },
+          { title: '客户', dataIndex: 'customer', width: 100 },
+          { title: '手机', dataIndex: 'phone', width: 120 },
+          { title: '服务', dataIndex: 'service', width: 150 },
+          { title: '金额', dataIndex: 'amount', width: 90, render: (value: number) => `¥${value}` },
           {
             title: '状态',
             dataIndex: 'status',
             width: 120,
-            render: (value: OrderStatus) => (
-              <Tag color={statusColor[value]}>{statusText[value]}</Tag>
-            )
+            render: (value: OrderStatus) => <Tag color={orderStatusColor[value]}>{orderStatusText[value]}</Tag>
           },
-          {
-            title: '预约时间',
-            dataIndex: 'appointmentAt',
-            width: 150
-          },
-          {
-            title: '服务人员',
-            dataIndex: 'staff',
-            width: 100
-          },
-          {
-            title: '内部备注',
-            dataIndex: 'internalNote',
-            ellipsis: true
-          },
+          { title: '预约时间', dataIndex: 'appointmentAt', width: 150 },
+          { title: '服务人员', dataIndex: 'staff', width: 100 },
+          { title: '内部备注', dataIndex: 'internalNote', ellipsis: true },
           {
             title: '操作',
             fixed: 'right',
@@ -181,20 +202,12 @@ const Orders: React.FC = () => {
             render: (_: unknown, record: OrderRecord) => (
               <Space>
                 {['pending_service', 'pending_confirm'].includes(record.status) ? (
-                  <Button
-                    icon={<CheckCircleOutlined />}
-                    type="primary"
-                    onClick={() => updateStatus(record.id, 'completed')}
-                  >
+                  <Button icon={<CheckCircleOutlined />} type="primary" onClick={() => updateStatus(record.id, 'completed')}>
                     确认/核销
                   </Button>
                 ) : null}
                 {record.status !== 'refunded' && record.status !== 'completed' ? (
-                  <Button
-                    icon={<CloseCircleOutlined />}
-                    danger
-                    onClick={() => updateStatus(record.id, 'refunded')}
-                  >
+                  <Button icon={<CloseCircleOutlined />} danger onClick={() => updateStatus(record.id, 'refunded')}>
                     异常关闭/退款
                   </Button>
                 ) : null}
