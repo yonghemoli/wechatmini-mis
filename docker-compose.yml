@@ -27,8 +27,6 @@ services:
       - ./work:/app/work
     networks:
       - yonghemolimis-network
-    depends_on:
-      - mysql
 
 networks:
   yonghemolimis-network:
