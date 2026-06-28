@@ -85,6 +85,10 @@ db-stop: ## 停止数据库
 	@echo "停止数据库..."
 	cd resources/db && docker-compose down
 
+db-schema: ## 初始化或补齐数据库表结构
+	@echo "初始化或补齐数据库表结构..."
+	@set -a && . ./.env && set +a && go run ./cmd/dbinit
+
 db-seed: ## 初始化默认管理员和开发数据
 	@echo "初始化默认管理员和开发数据..."
 	@set -a && . ./.env && set +a && \
@@ -99,6 +103,10 @@ db-seed: ## 初始化默认管理员和开发数据
 	DB_PART="$${DSN#*)/}" && \
 	DB_NAME="$${DB_PART%%\?*}" && \
 	MYSQL_PWD="$$DB_PASS" mysql -h "$$DB_HOST" -P "$$DB_PORT" -u "$$DB_USER" "$$DB_NAME" < sql/init-seed.sql
+
+db-init: ## 初始化表结构和默认数据
+	@echo "初始化表结构和默认数据..."
+	@set -a && . ./.env && set +a && go run ./cmd/dbinit -seed
 
 # 服务管理
 service-install: ## 安装系统服务

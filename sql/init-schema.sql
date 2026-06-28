@@ -1,0 +1,132 @@
+-- Yonghemoli MIS schema.
+-- Run this manually when initializing a MySQL database or after adding MIS tables.
+
+CREATE TABLE IF NOT EXISTS admins (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    email VARCHAR(128) NOT NULL,
+    role_id BIGINT NULL,
+    is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    last_login_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_admins_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(32) NOT NULL,
+    avatar VARCHAR(255) NOT NULL DEFAULT '',
+    nickname VARCHAR(64) NOT NULL,
+    total_spent INT NOT NULL DEFAULT 0,
+    last_order_at VARCHAR(32) DEFAULT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'active',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_users_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS orders (
+    id VARCHAR(32) NOT NULL,
+    customer VARCHAR(64) NOT NULL,
+    phone VARCHAR(32) NOT NULL,
+    service VARCHAR(128) NOT NULL,
+    amount INT NOT NULL DEFAULT 0,
+    status VARCHAR(32) NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    appointment_at VARCHAR(32) DEFAULT NULL,
+    staff VARCHAR(64) NOT NULL DEFAULT '',
+    internal_note TEXT,
+    close_reason TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_orders_status (status),
+    KEY idx_orders_source (source),
+    KEY idx_orders_appointment_at (appointment_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS service_types (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL,
+    description TEXT,
+    sort_order INT NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS services (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    type_id BIGINT UNSIGNED NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    image VARCHAR(255) NOT NULL DEFAULT '',
+    price INT NOT NULL DEFAULT 0,
+    unit VARCHAR(32) NOT NULL DEFAULT '小时',
+    description TEXT,
+    visible BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_services_type_id (type_id),
+    KEY idx_services_visible (visible)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS shops (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(128) NOT NULL,
+    contact_name VARCHAR(64) DEFAULT NULL,
+    phone VARCHAR(32) DEFAULT NULL,
+    address VARCHAR(255) DEFAULT NULL,
+    business_hours VARCHAR(128) DEFAULT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'open',
+    remark TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS faqs (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    question VARCHAR(255) NOT NULL,
+    answer TEXT NOT NULL,
+    category VARCHAR(64) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    visible BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_faqs_category (category),
+    KEY idx_faqs_visible (visible)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id VARCHAR(40) NOT NULL,
+    user_id VARCHAR(40) DEFAULT NULL,
+    user_name VARCHAR(64) DEFAULT NULL,
+    user_avatar VARCHAR(255) DEFAULT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'open',
+    last_message VARCHAR(255) DEFAULT NULL,
+    unread_count INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    session_id VARCHAR(40) NOT NULL,
+    sender VARCHAR(20) NOT NULL,
+    msg_type VARCHAR(20) NOT NULL DEFAULT 'text',
+    content TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_chat_messages_session_id (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

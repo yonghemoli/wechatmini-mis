@@ -105,18 +105,21 @@ MIS_DB_AUTO_MIGRATE=false
 
 ## 初始化数据
 
-GORM AutoMigrate 只负责建表和字段迁移；默认管理员等额外初始化数据不在服务启动时自动写入，避免每次启动产生额外 SQL。
+默认建议使用独立 SQL 文件初始化表结构和默认数据，不依赖服务启动时自动建表，避免每次启动产生额外 SQL。
 
-`MIS_DB_AUTO_MIGRATE=true` 时，GORM 会对每个模型查询 `information_schema` 检查表、字段、索引和约束，所以启动日志里会出现大量 SQL。生产和日常开发默认保持 `false`，只在首次建表或表结构变更时临时开启一次。
+`MIS_DB_AUTO_MIGRATE=true` 时，GORM 会对每个模型查询 `information_schema` 检查表、字段、索引和约束，所以启动日志里会出现大量 SQL。生产和日常开发默认保持 `false`。
 
-首次部署时，在应用完成一次启动并创建表后，手动执行：
+首次部署或新增模块表不存在时，手动执行：
 
 ```sh
-# 首次建表
-MIS_DB_AUTO_MIGRATE=true go run .
+# 初始化或补齐表结构
+make db-schema
 
-# 初始化默认数据
+# 初始化默认管理员和开发数据；需要本机有 mysql CLI
 make db-seed
+
+# 或一次执行表结构和默认数据
+make db-init
 ```
 
 默认管理员账号：
