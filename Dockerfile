@@ -41,7 +41,7 @@ RUN --mount=type=secret,id=github_token,required=false \
 COPY src ./src
 COPY main.go ./
 # 从前端阶段拷贝构建产物
-COPY --from=frontend /app/frontend/dist ./dist
+COPY --from=frontend /app/dist ./dist
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION=0.0.1
