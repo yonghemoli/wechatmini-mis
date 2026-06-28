@@ -70,7 +70,11 @@
 - `GET /api/mini/user/profile`：获取当前用户信息。
 - `GET /api/mini/home`：小程序首页数据。
 - `GET /api/mini/appointment/home`：预约页首页数据。
-- `GET /api/mini/services`：服务项目列表。
+- `GET /api/mini/stores/nearest`：获取最近的可服务门店。
+- `GET /api/mini/service-categories`：服务类型枚举。
+- `GET /api/mini/service-categories/:id/services`：获取某个服务类型下的预约服务。
+- `GET /api/mini/services`：服务项目列表，支持 `category`、`keyword` 查询。
+- `GET /api/mini/services/search`：搜索服务项目，参数同 `services`。
 - `GET /api/mini/services/:id`：服务项目详情。
 - `GET /api/mini/service-areas`：服务范围。
 - `GET /api/mini/addresses`：常用地址列表。

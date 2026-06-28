@@ -69,6 +69,27 @@ type AppointmentGroup struct {
 	Items []AppointmentItem `json:"items"`
 }
 
+type Store struct {
+	ID            string  `json:"id"`
+	Name          string  `json:"name"`
+	ContactName   string  `json:"contactName"`
+	Phone         string  `json:"phone"`
+	Address       string  `json:"address"`
+	BusinessHours string  `json:"businessHours"`
+	Status        string  `json:"status"`
+	DistanceText  string  `json:"distanceText"`
+	Latitude      float64 `json:"latitude"`
+	Longitude     float64 `json:"longitude"`
+}
+
+type ServiceCategory struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Desc string `json:"desc"`
+	Icon string `json:"icon"`
+	Sort int    `json:"sort"`
+}
+
 type Address struct {
 	ID          string `json:"id"`
 	ContactName string `json:"contactName"`
@@ -257,6 +278,10 @@ var serviceList = []Service{
 	},
 }
 
+var storeList = []Store{
+	{ID: "store_1", Name: "永和护理服务中心", ContactName: "李店长", Phone: "0771-8888888", Address: "广西南宁青秀区民族大道 100 号", BusinessHours: "09:00-18:00", Status: "open", DistanceText: "距您约 3.2km · 南宁家庭服务", Latitude: 22.81673, Longitude: 108.3669},
+}
+
 var addresses = []Address{
 	{ID: "addr_1", ContactName: "张三", Phone: "13800000000", District: "广西 南宁 青秀区", Detail: "3 栋 2 单元 801", Tag: "家", IsDefault: true},
 }
@@ -304,7 +329,11 @@ func RegisterRoutes(r gin.IRouter) {
 	r.GET("/user/profile", UserProfile)
 	r.GET("/home", GetHome)
 	r.GET("/appointment/home", AppointmentHome)
+	r.GET("/stores/nearest", NearestStore)
+	r.GET("/service-categories", ListServiceCategories)
+	r.GET("/service-categories/:id/services", ListServicesByCategoryID)
 	r.GET("/services", ListServices)
+	r.GET("/services/search", SearchServices)
 	r.GET("/services/:id", GetService)
 	r.GET("/service-areas", ServiceAreas)
 	r.GET("/addresses", ListAddresses)
@@ -412,11 +441,9 @@ func GetHome(c *gin.Context) {
 }
 
 func AppointmentHome(c *gin.Context) {
+	store := nearestStore()
 	ok(c, gin.H{
-		"store": gin.H{
-			"name":         "永和护理服务中心",
-			"distanceText": "距您约 3.2km · 南宁家庭服务",
-		},
+		"store": store,
 		"tabs": []gin.H{
 			{"id": "all", "name": "所有"},
 			{"id": "activity1", "name": "活动1"},
@@ -436,6 +463,33 @@ func AppointmentHome(c *gin.Context) {
 			},
 		},
 	})
+}
+
+func NearestStore(c *gin.Context) {
+	store := nearestStore()
+	if store.ID == "" {
+		fail(c, "store not found")
+		return
+	}
+	ok(c, gin.H{"item": store})
+}
+
+func ListServiceCategories(c *gin.Context) {
+	ok(c, gin.H{"list": serviceCategories()})
+}
+
+func ListServicesByCategoryID(c *gin.Context) {
+	categoryID := strings.TrimSpace(c.Param("id"))
+	items := appointmentItemsByGroupID(categoryID)
+	if items == nil {
+		fail(c, "service category not found")
+		return
+	}
+	ok(c, gin.H{"list": items})
+}
+
+func SearchServices(c *gin.Context) {
+	ListServices(c)
 }
 
 func ListServices(c *gin.Context) {
@@ -783,6 +837,42 @@ func parsePositiveInt(value string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func nearestStore() Store {
+	for _, item := range storeList {
+		if item.Status == "open" {
+			return item
+		}
+	}
+	if len(storeList) > 0 {
+		return storeList[0]
+	}
+	return Store{}
+}
+
+func serviceCategories() []ServiceCategory {
+	groups := appointmentGroups()
+	categories := make([]ServiceCategory, 0, len(groups))
+	for index, group := range groups {
+		categories = append(categories, ServiceCategory{
+			ID:   group.ID,
+			Name: group.Name,
+			Desc: group.Desc,
+			Icon: group.Icon,
+			Sort: (index + 1) * 10,
+		})
+	}
+	return categories
+}
+
+func appointmentItemsByGroupID(id string) []AppointmentItem {
+	for _, group := range appointmentGroups() {
+		if group.ID == id {
+			return group.Items
+		}
+	}
+	return nil
 }
 
 func appointmentGroups() []AppointmentGroup {
