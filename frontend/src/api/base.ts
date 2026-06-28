@@ -12,11 +12,8 @@ export { api as axiosInstance }
 
 export const LOGIN_FLAG_KEY = 'mis:logged_in'
 
-const getContentType = (method: string) => {
-  if (method === 'DELETE') return 'multipart/form-data'
-  return method === 'GET'
-    ? 'application/json'
-    : 'application/x-www-form-urlencoded'
+const getContentType = () => {
+  return 'application/json'
 }
 
 const Method = {
@@ -46,14 +43,19 @@ export const server = async (
   return new Promise((resolve, reject) => {
     api({
       headers: {
-        'Content-Type': getContentType(cfg.method || 'GET'),
+        'Content-Type': getContentType(),
         ...headers
       },
       ...cfg
     })
       .then(res => {
         count = 0 // 重置错误计数
-        resolve(res.data)
+        const payload = res.data
+        if (payload?.code !== undefined && payload.code !== 0) {
+          reject(payload)
+          return
+        }
+        resolve(payload)
       })
       .catch(err => {
         if (err?.response?.status === 401) {
@@ -100,14 +102,19 @@ export const request = async (
   return new Promise((resolve, reject) => {
     api({
       headers: {
-        'Content-Type': getContentType(cfg.method || 'GET'),
+        'Content-Type': getContentType(),
         ...headers
       },
       ...cfg
     })
       .then(res => {
         count = 0 // 重置错误计数
-        resolve(res.data)
+        const payload = res.data
+        if (payload?.code !== undefined && payload.code !== 0) {
+          reject(payload)
+          return
+        }
+        resolve(payload)
       })
       .catch(err => {
         if (err?.response?.status === 401) {

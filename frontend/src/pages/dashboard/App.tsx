@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Col, Empty, Row, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd'
-import { AlertOutlined, CheckCircleOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons'
+import { AlertOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
   OrderRecord,
@@ -142,40 +142,6 @@ const Dashboard: React.FC = () => {
           ]}
         />
       </div>
-
-      <Row gutter={[12, 12]}>
-        <Col xs={24} md={12}>
-          <div className="mis-panel">
-            <div className="mis-panel-header">
-              <Title level={5} style={{ margin: 0 }}>
-                今日运营顺序
-              </Title>
-            </div>
-            <Space direction="vertical" size={10}>
-              <Text>
-                <Badge status="error" /> 先处理异常订单、退款、改派。
-              </Text>
-              <Text>
-                <Badge status="warning" /> 再核销已完成服务，减少财务对账延迟。
-              </Text>
-              <Text>
-                <Badge status="processing" /> 最后检查待服务订单是否已分配服务人员。
-              </Text>
-            </Space>
-          </div>
-        </Col>
-        <Col xs={24} md={12}>
-          <div className="mis-panel">
-            <div className="mis-panel-header">
-              <Title level={5} style={{ margin: 0 }}>
-                系统状态
-              </Title>
-              <CheckCircleOutlined style={{ color: '#237804' }} />
-            </div>
-            <Text>当前工作台已对接真实 MIS 接口。无业务数据时显示空状态，不再读取本地 mock。</Text>
-          </div>
-        </Col>
-      </Row>
     </Space>
   )
 }

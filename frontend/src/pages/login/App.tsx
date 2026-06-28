@@ -65,6 +65,8 @@ const Login: React.FC = () => {
         return
       }
       message.error(res?.message || '登录失败')
+    } catch (err: any) {
+      message.error(err?.message || '登录失败')
     } finally {
       setSubmitting(false)
     }
@@ -83,7 +85,7 @@ const Login: React.FC = () => {
       <Card className="mis-login-card">
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <Title level={2} style={{ marginBottom: 8 }}>
-            家政 MIS
+            永和茉莉
           </Title>
           <Text type="secondary">内部运营管理系统</Text>
         </div>

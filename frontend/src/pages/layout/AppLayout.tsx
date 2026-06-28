@@ -3,9 +3,9 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Avatar,
   Button,
-  Dropdown,
   Layout,
   Menu,
+  Space,
   Typography,
   message,
   theme
@@ -16,18 +16,17 @@ import {
   HomeOutlined,
   FileTextOutlined,
   QuestionCircleOutlined,
-  LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   TeamOutlined,
   UserOutlined,
   SafetyOutlined,
   UnorderedListOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  RightOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, setLoggedOut } from '@/redux'
-import { apiLogout } from '@/api'
 import { onSessionExpired, resetSessionExpired } from '@/utils/authEvent'
 
 const { Header, Sider, Content } = Layout
@@ -105,16 +104,6 @@ const AppLayout: React.FC = () => {
     return unsubscribe
   }, [dispatch, navigate])
 
-  const handleLogout = async () => {
-    try {
-      await apiLogout()
-    } catch {
-      message.warning('服务端退出请求失败，已清理本地登录态')
-    }
-    dispatch(setLoggedOut())
-    navigate('/admin/login')
-  }
-
   const selectedKey =
     routeKeys.find(key => location.pathname.startsWith(key)) || '/admin/dashboard'
 
@@ -148,7 +137,7 @@ const AppLayout: React.FC = () => {
           }}
         >
           <Typography.Title level={5} style={{ margin: 0, whiteSpace: 'nowrap' }}>
-            {collapsed ? 'MIS' : '家政 MIS'}
+            {collapsed ? 'MIS' : '永和茉莉'}
           </Typography.Title>
         </div>
         <Menu
@@ -177,40 +166,24 @@ const AppLayout: React.FC = () => {
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={() => setCollapsed(!collapsed)}
           />
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: 'logout',
-                  icon: <LogoutOutlined />,
-                  label: '退出登录',
-                  danger: true
-                }
-              ],
-              onClick: ({ key }) => {
-                if (key === 'logout') handleLogout()
-              }
+          <Button
+            type="text"
+            onClick={() => navigate('/admin/profile')}
+            style={{
+              height: 'auto',
+              padding: '4px 8px'
             }}
-            placement="bottomRight"
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: 6
-              }}
-            >
+            <Space size={8}>
               <Avatar
                 src={user?.avatar}
                 icon={!user?.avatar ? <UserOutlined /> : undefined}
                 size="small"
               />
               <span>{user?.username || '运营管理员'}</span>
-            </div>
-          </Dropdown>
+              <RightOutlined style={{ fontSize: 12 }} />
+            </Space>
+          </Button>
         </Header>
         <Content
           style={{

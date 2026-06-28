@@ -8,11 +8,11 @@
 - 数据库：MySQL 作为业务读写库。
 - 管理端：内部账号密码登录，不再依赖单点登录。
 - 前端入口：管理端统一挂载在 `/admin`。
-- 本次升级：前端入口、导航和核心页面已收敛为家政 MIS。
+- 本次升级：前端入口、导航和核心页面已收敛为永和茉莉。
 - 当前页面：工作台、订单管理、用户管理、服务类型管理、服务管理、账户管理、店铺管理、常见问题管理、客服在线。
 - 数据状态：管理端页面已对接 `/api/v1` 真实接口；开发初始化数据通过 `sql/init-seed.sql` 手动写入。
 
-## 家政 MIS 模块边界
+## 永和茉莉 模块边界
 
 1. 工作台
    - 今日订单量、今日营收、待处理工单数、用户总数。
@@ -65,9 +65,13 @@
 当前已提供：
 
 - `POST /api/mini/auth/wechat-login`：微信授权登录 mock。
+- `POST /api/mini/auth/phone-code`：发送手机号验证码 mock。
+- `POST /api/mini/auth/phone-login`：手机号验证码登录 mock。
 - `GET /api/mini/user/profile`：获取当前用户信息。
 - `GET /api/mini/home`：小程序首页数据。
+- `GET /api/mini/appointment/home`：预约页首页数据。
 - `GET /api/mini/services`：服务项目列表。
+- `GET /api/mini/services/:id`：服务项目详情。
 - `GET /api/mini/service-areas`：服务范围。
 - `GET /api/mini/addresses`：常用地址列表。
 - `POST /api/mini/addresses`：新增地址。
@@ -75,8 +79,11 @@
 - `DELETE /api/mini/addresses/:id`：删除地址。
 - `GET /api/mini/service-targets`：老人/孩子服务对象列表。
 - `POST /api/mini/service-targets`：新增服务对象。
+- `PUT /api/mini/service-targets/:id/default`：设为默认服务对象。
 - `DELETE /api/mini/service-targets/:id`：删除服务对象。
+- `GET /api/mini/meal/pricing`：配菜价格配置。
 - `GET /api/mini/meal/dishes`：菜品列表。
+- `GET /api/mini/meal/dishes/:nameOrId`：菜品详情。
 - `GET /api/mini/meal/packages`：官方配菜套餐。
 - `GET /api/mini/meal/custom-packages`：我的配菜套餐。
 - `POST /api/mini/meal/custom-packages`：保存个性化套餐。

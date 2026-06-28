@@ -14,6 +14,7 @@ const Accounts = lazy(() => import('./pages/accounts/App'))
 const Shops = lazy(() => import('./pages/shops/App'))
 const FAQs = lazy(() => import('./pages/faqs/App'))
 const Chat = lazy(() => import('./pages/chat/App'))
+const Profile = lazy(() => import('./pages/profile/App'))
 
 const wrap = (node: ReactNode) => <WithSuspense>{node}</WithSuspense>
 
@@ -69,6 +70,10 @@ const router = createBrowserRouter([
       {
         path: 'chat',
         element: wrap(<Chat />)
+      },
+      {
+        path: 'profile',
+        element: wrap(<Profile />)
       }
     ]
   },

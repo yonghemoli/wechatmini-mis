@@ -9,7 +9,7 @@ import (
 
 const (
 	ServiceName        = "yonghemolimis"
-	ServiceDescription = "家政 MIS 系统"
+	ServiceDescription = "永和茉莉 系统"
 )
 
 var Conf = new(AppConfig)
@@ -44,7 +44,7 @@ type DatabaseConfig struct {
 }
 
 func Init() error {
-	log.Println("=== 家政 MIS 系统配置初始化 ===")
+	log.Println("=== 永和茉莉 系统配置初始化 ===")
 
 	Conf.Name = getEnv("MIS_NAME", ServiceName)
 	Conf.Mode = getEnv("MIS_MODE", "release")

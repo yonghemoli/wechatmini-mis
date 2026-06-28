@@ -49,6 +49,26 @@ type Service struct {
 	Notes              []string `json:"notes"`
 }
 
+type AppointmentItem struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Scene        string `json:"scene"`
+	Summary      string `json:"summary"`
+	PriceText    string `json:"priceText"`
+	DurationText string `json:"durationText"`
+	ImageText    string `json:"imageText"`
+	Category     string `json:"category"`
+	Action       string `json:"action"`
+}
+
+type AppointmentGroup struct {
+	ID    string            `json:"id"`
+	Name  string            `json:"name"`
+	Desc  string            `json:"desc"`
+	Icon  string            `json:"icon"`
+	Items []AppointmentItem `json:"items"`
+}
+
 type Address struct {
 	ID          string `json:"id"`
 	ContactName string `json:"contactName"`
@@ -70,6 +90,7 @@ type ServiceTarget struct {
 }
 
 type Dish struct {
+	ID          string   `json:"id"`
 	Name        string   `json:"name"`
 	Scene       string   `json:"scene"`
 	Tag         string   `json:"tag"`
@@ -159,6 +180,81 @@ var serviceList = []Service{
 		Process:            []string{"选择菜品", "确认金额", "预约送达", "签收"},
 		Notes:              []string{"暂不提供现场烹饪", "菜价可能随市场波动"},
 	},
+	{
+		ID:                 "storage-organizing",
+		Category:           "housekeeping",
+		Name:               "收纳整理",
+		Scene:              "适合衣柜、厨房和杂物区重新整理",
+		Summary:            "分类归位、动线整理和日常收纳建议",
+		PriceText:          "预约后报价",
+		DurationText:       "约 3 小时起",
+		RequirementLabel:   "整理区域",
+		RequirementOptions: []string{"衣柜", "厨房", "全屋局部"},
+		SuitableFor:        []string{"搬家后整理", "换季衣物整理", "家庭空间优化"},
+		Scope:              []string{"物品分类", "空间规划", "收纳归位"},
+		Process:            []string{"需求沟通", "上门评估", "现场整理", "交付建议"},
+		Notes:              []string{"不包含大件搬运", "贵重物品请提前自行保管"},
+	},
+	{
+		ID:                 "elder-home-care",
+		Category:           "eldercare",
+		Name:               "居家照护",
+		Scene:              "适合老人日常陪护、起居协助",
+		Summary:            "陪伴照护、基础清洁和生活协助",
+		PriceText:          "预约后报价",
+		DurationText:       "半天起约",
+		RequirementLabel:   "照护时长",
+		RequirementOptions: []string{"半天", "全天", "长期咨询"},
+		SuitableFor:        []string{"行动较慢老人", "术后恢复期", "子女不在身边"},
+		Scope:              []string{"起居协助", "安全陪伴", "基础照护"},
+		Process:            []string{"了解情况", "匹配人员", "确认时间", "上门服务"},
+		Notes:              []string{"不提供医疗诊断", "特殊护理需提前说明"},
+	},
+	{
+		ID:                 "elder-hospital-escort",
+		Category:           "eldercare",
+		Name:               "陪诊服务",
+		Scene:              "适合老人就医挂号、取药和检查陪同",
+		Summary:            "协助就诊流程、排队取号和结果领取",
+		PriceText:          "预约后报价",
+		DurationText:       "约半天",
+		RequirementLabel:   "医院区域",
+		RequirementOptions: []string{"青秀区", "兴宁区", "西乡塘区"},
+		SuitableFor:        []string{"老人复诊", "行动不便", "家属无法陪同"},
+		Scope:              []string{"挂号取号", "检查陪同", "取药协助"},
+		Process:            []string{"确认医院", "约定见面", "陪同就诊", "反馈结果"},
+		Notes:              []string{"不代替家属作医疗决定", "请提前准备身份证件和病历"},
+	},
+	{
+		ID:                 "child-temporary-care",
+		Category:           "childcare",
+		Name:               "临时看护",
+		Scene:              "适合家长短时外出或临时照看",
+		Summary:            "陪伴游戏、餐点提醒和基础安全看护",
+		PriceText:          "预约后报价",
+		DurationText:       "约 2 小时起",
+		RequirementLabel:   "孩子年龄",
+		RequirementOptions: []string{"3-6 岁", "7-9 岁", "10-12 岁"},
+		SuitableFor:        []string{"临时加班", "短时外出", "课后陪伴"},
+		Scope:              []string{"安全陪伴", "餐点提醒", "简单互动"},
+		Process:            []string{"确认年龄", "匹配人员", "上门看护", "服务反馈"},
+		Notes:              []string{"不提供医疗护理", "请提前说明过敏和禁忌"},
+	},
+	{
+		ID:                 "child-pickup",
+		Category:           "childcare",
+		Name:               "接送陪伴",
+		Scene:              "适合放学接送和短时等待",
+		Summary:            "按约定地点接送，并陪伴至家长交接",
+		PriceText:          "预约后报价",
+		DurationText:       "按次服务",
+		RequirementLabel:   "接送方式",
+		RequirementOptions: []string{"步行接送", "公共交通", "家长指定方式"},
+		SuitableFor:        []string{"放学接送", "兴趣班接送", "家长临时不便"},
+		Scope:              []string{"身份核验", "路线确认", "安全交接"},
+		Process:            []string{"确认地点", "人员接单", "到点接送", "完成交接"},
+		Notes:              []string{"不使用未确认车辆", "需提前提供接送信息"},
+	},
 }
 
 var addresses = []Address{
@@ -170,8 +266,9 @@ var targets = []ServiceTarget{
 }
 
 var dishes = []Dish{
-	{Name: "番茄炒蛋", Scene: "酸甜开胃，适合日常晚餐", Tag: "家常", Price: 12, Ingredients: []string{"番茄 300g", "鸡蛋 3 个"}, VideoTitle: "番茄炒蛋 8 分钟快手做法", VideoURL: "https://example.com/tomato-egg", Comments: []string{"孩子很爱吃"}},
-	{Name: "青椒肉丝", Scene: "下饭快手菜", Tag: "家常", Price: 16, Ingredients: []string{"青椒 250g", "猪肉 200g"}, VideoTitle: "青椒肉丝家常做法", VideoURL: "https://example.com/pepper-pork", Comments: []string{"适合工作日晚餐"}},
+	{ID: "tomato-egg", Name: "番茄炒蛋", Scene: "酸甜开胃，适合日常晚餐", Tag: "家常", Price: 12, Ingredients: []string{"番茄 300g", "鸡蛋 3 个"}, VideoTitle: "番茄炒蛋 8 分钟快手做法", VideoURL: "https://example.com/tomato-egg", Comments: []string{"孩子很爱吃"}},
+	{ID: "pepper-pork", Name: "青椒肉丝", Scene: "下饭快手菜", Tag: "家常", Price: 16, Ingredients: []string{"青椒 250g", "猪肉 200g"}, VideoTitle: "青椒肉丝家常做法", VideoURL: "https://example.com/pepper-pork", Comments: []string{"适合工作日晚餐"}},
+	{ID: "seaweed-egg-soup", Name: "紫菜蛋花汤", Scene: "清淡快手，适合搭配主菜", Tag: "汤品", Price: 10, Ingredients: []string{"紫菜 20g", "鸡蛋 2 个"}, VideoTitle: "紫菜蛋花汤家常做法", VideoURL: "https://example.com/seaweed-egg-soup", Comments: []string{"老人孩子都适合"}},
 }
 
 var officialPackages = []MealPackage{
@@ -202,9 +299,13 @@ var orders = []Order{
 
 func RegisterRoutes(r gin.IRouter) {
 	r.POST("/auth/wechat-login", WechatLogin)
+	r.POST("/auth/phone-code", PhoneCode)
+	r.POST("/auth/phone-login", PhoneLogin)
 	r.GET("/user/profile", UserProfile)
 	r.GET("/home", GetHome)
+	r.GET("/appointment/home", AppointmentHome)
 	r.GET("/services", ListServices)
+	r.GET("/services/:id", GetService)
 	r.GET("/service-areas", ServiceAreas)
 	r.GET("/addresses", ListAddresses)
 	r.POST("/addresses", CreateAddress)
@@ -212,8 +313,11 @@ func RegisterRoutes(r gin.IRouter) {
 	r.DELETE("/addresses/:id", DeleteAddress)
 	r.GET("/service-targets", ListServiceTargets)
 	r.POST("/service-targets", CreateServiceTarget)
+	r.PUT("/service-targets/:id/default", SetDefaultServiceTarget)
 	r.DELETE("/service-targets/:id", DeleteServiceTarget)
+	r.GET("/meal/pricing", MealPricing)
 	r.GET("/meal/dishes", ListDishes)
+	r.GET("/meal/dishes/:nameOrId", GetDish)
 	r.GET("/meal/packages", ListMealPackages)
 	r.GET("/meal/custom-packages", ListCustomPackages)
 	r.POST("/meal/custom-packages", CreateCustomPackage)
@@ -248,6 +352,7 @@ func WechatLogin(c *gin.Context) {
 		Code          string `json:"code"`
 		EncryptedData string `json:"encryptedData"`
 		IV            string `json:"iv"`
+		PhoneCode     string `json:"phoneCode"`
 		NickName      string `json:"nickName"`
 		AvatarURL     string `json:"avatarUrl"`
 	}
@@ -261,6 +366,34 @@ func WechatLogin(c *gin.Context) {
 	if req.AvatarURL != "" {
 		currentUser.AvatarURL = req.AvatarURL
 	}
+	ok(c, gin.H{"token": "dev-mini-token", "user": currentUser})
+}
+
+func PhoneCode(c *gin.Context) {
+	var req struct {
+		Phone string `json:"phone"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Phone) == "" {
+		fail(c, "phone required")
+		return
+	}
+	ok(c, gin.H{"success": true})
+}
+
+func PhoneLogin(c *gin.Context) {
+	var req struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, "invalid request")
+		return
+	}
+	if strings.TrimSpace(req.Phone) == "" || strings.TrimSpace(req.Code) == "" {
+		fail(c, "phone and code required")
+		return
+	}
+	currentUser.Phone = req.Phone
 	ok(c, gin.H{"token": "dev-mini-token", "user": currentUser})
 }
 
@@ -278,8 +411,58 @@ func GetHome(c *gin.Context) {
 	})
 }
 
+func AppointmentHome(c *gin.Context) {
+	ok(c, gin.H{
+		"store": gin.H{
+			"name":         "永和护理服务中心",
+			"distanceText": "距您约 3.2km · 南宁家庭服务",
+		},
+		"tabs": []gin.H{
+			{"id": "all", "name": "所有"},
+			{"id": "activity1", "name": "活动1"},
+			{"id": "activity2", "name": "活动2"},
+		},
+		"groups": appointmentGroups(),
+		"activities": gin.H{
+			"activity1": gin.H{
+				"title": "活动1",
+				"desc":  "精选家庭清洁与照护服务",
+				"items": serviceItems("housekeeping", "booking"),
+			},
+			"activity2": gin.H{
+				"title": "活动2",
+				"desc":  "适合老人和孩子的安心陪伴服务",
+				"items": append(serviceItems("eldercare", "booking"), serviceItems("childcare", "booking")...),
+			},
+		},
+	})
+}
+
 func ListServices(c *gin.Context) {
-	ok(c, gin.H{"list": serviceList})
+	category := strings.TrimSpace(c.Query("category"))
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	list := make([]Service, 0, len(serviceList))
+	for _, item := range serviceList {
+		if category != "" && item.Category != category {
+			continue
+		}
+		if keyword != "" && !serviceMatchesKeyword(item, keyword) {
+			continue
+		}
+		list = append(list, item)
+	}
+	ok(c, gin.H{"list": list})
+}
+
+func GetService(c *gin.Context) {
+	id := c.Param("id")
+	for _, item := range serviceList {
+		if item.ID == id {
+			ok(c, item)
+			return
+		}
+	}
+	fail(c, "service not found")
 }
 
 func ServiceAreas(c *gin.Context) {
@@ -371,8 +554,44 @@ func DeleteServiceTarget(c *gin.Context) {
 	ok(c, gin.H{"id": id})
 }
 
+func SetDefaultServiceTarget(c *gin.Context) {
+	id := c.Param("id")
+	category := ""
+	for _, item := range targets {
+		if item.ID == id {
+			category = item.Category
+			break
+		}
+	}
+	if category == "" {
+		fail(c, "service target not found")
+		return
+	}
+	for i := range targets {
+		if targets[i].Category == category {
+			targets[i].IsDefault = targets[i].ID == id
+		}
+	}
+	ok(c, gin.H{"id": id})
+}
+
+func MealPricing(c *gin.Context) {
+	ok(c, gin.H{"dishPrice": 12, "deliveryFee": 8})
+}
+
 func ListDishes(c *gin.Context) {
 	ok(c, gin.H{"list": dishes})
+}
+
+func GetDish(c *gin.Context) {
+	nameOrID := c.Param("nameOrId")
+	for _, item := range dishes {
+		if item.ID == nameOrID || item.Name == nameOrID {
+			ok(c, item)
+			return
+		}
+	}
+	fail(c, "dish not found")
 }
 
 func ListMealPackages(c *gin.Context) {
@@ -564,4 +783,102 @@ func parsePositiveInt(value string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func appointmentGroups() []AppointmentGroup {
+	return []AppointmentGroup{
+		{
+			ID:    "cleaning",
+			Name:  "清洁清洗",
+			Desc:  "家电、玻璃、厨房等上门清洁",
+			Icon:  "housekeeping",
+			Items: []AppointmentItem{serviceItemByID("air-conditioner-cleaning", "清洁", "booking"), serviceItemByID("daily-cleaning", "保洁", "booking")},
+		},
+		{
+			ID:    "organizing",
+			Name:  "收纳整理",
+			Desc:  "衣柜、厨房和家庭空间整理",
+			Icon:  "housekeeping",
+			Items: []AppointmentItem{serviceItemByID("storage-organizing", "收纳", "booking")},
+		},
+		{
+			ID:    "eldercare",
+			Name:  "养老护理",
+			Desc:  "陪诊、居家照护和日常陪伴",
+			Icon:  "eldercare",
+			Items: []AppointmentItem{serviceItemByID("elder-home-care", "照护", "booking"), serviceItemByID("elder-hospital-escort", "陪诊", "booking")},
+		},
+		{
+			ID:    "maternal-care",
+			Name:  "母婴护理",
+			Desc:  "月嫂、育婴和产后家庭照护咨询",
+			Icon:  "care",
+			Items: []AppointmentItem{{ID: "maternal-care-consult", Name: "母婴护理咨询", Scene: "适合产后家庭提前沟通服务需求", Summary: "由客服协助确认月嫂、育婴等服务安排", PriceText: "预约后报价", DurationText: "按需求确认", ImageText: "母婴", Category: "childcare", Action: "coming"}},
+		},
+		{
+			ID:    "childcare",
+			Name:  "育儿早教",
+			Desc:  "临时看护、接送陪伴和亲子照护",
+			Icon:  "childcare",
+			Items: []AppointmentItem{serviceItemByID("child-temporary-care", "看护", "booking"), serviceItemByID("child-pickup", "接送", "booking")},
+		},
+		{
+			ID:    "mealprep",
+			Name:  "食谱配菜",
+			Desc:  "按套餐或自选菜品配好食材送上门",
+			Icon:  "mealprep",
+			Items: []AppointmentItem{serviceItemByID("meal-prep", "配菜", "mealprep")},
+		},
+	}
+}
+
+func serviceItems(category, action string) []AppointmentItem {
+	items := make([]AppointmentItem, 0)
+	for _, item := range serviceList {
+		if item.Category == category {
+			items = append(items, serviceToAppointmentItem(item, imageTextByCategory(item.Category), action))
+		}
+	}
+	return items
+}
+
+func serviceItemByID(id, imageText, action string) AppointmentItem {
+	for _, item := range serviceList {
+		if item.ID == id {
+			return serviceToAppointmentItem(item, imageText, action)
+		}
+	}
+	return AppointmentItem{ID: id, ImageText: imageText, Action: action}
+}
+
+func serviceToAppointmentItem(item Service, imageText, action string) AppointmentItem {
+	return AppointmentItem{
+		ID:           item.ID,
+		Name:         item.Name,
+		Scene:        item.Scene,
+		Summary:      item.Summary,
+		PriceText:    item.PriceText,
+		DurationText: item.DurationText,
+		ImageText:    imageText,
+		Category:     item.Category,
+		Action:       action,
+	}
+}
+
+func imageTextByCategory(category string) string {
+	switch category {
+	case "eldercare":
+		return "照护"
+	case "childcare":
+		return "育儿"
+	case "mealprep":
+		return "配菜"
+	default:
+		return "清洁"
+	}
+}
+
+func serviceMatchesKeyword(item Service, keyword string) bool {
+	target := strings.Join([]string{item.Name, item.Scene, item.Summary, item.Category}, " ")
+	return strings.Contains(strings.ToLower(target), strings.ToLower(keyword))
 }
