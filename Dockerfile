@@ -6,10 +6,11 @@ ARG GITHUB_REWRITE_BASE=github.com
 # ===== 阶段1: 前端构建 =====
 FROM node:22-alpine AS frontend
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install --legacy-peer-deps --registry=https://registry.npmmirror.com
+COPY frontend/package.json frontend/yarn.lock ./
+RUN corepack enable \
+    && yarn install --frozen-lockfile --ignore-engines --registry=https://registry.npmmirror.com
 COPY frontend/ ./
-RUN npm run build
+RUN yarn build
 
 # ===== 阶段2: 后端构建 =====
 FROM golang:1.24-alpine AS builder
@@ -22,18 +23,25 @@ WORKDIR /app
 ENV GOPROXY=https://goproxy.cn,https://goproxy.io,direct
 ENV GOPRIVATE=github.com/xiuxianjs/*
 COPY go.mod go.sum ./
-RUN --mount=type=secret,id=github_token \
-    TOKEN="$(cat /run/secrets/github_token)" && \
-    GIT_CONFIG_COUNT=2 \
-    GIT_CONFIG_KEY_0="url.https://${TOKEN}@${GITHUB_REWRITE_BASE}/.insteadOf" \
-    GIT_CONFIG_VALUE_0=https://github.com/ \
-    GIT_CONFIG_KEY_1=http.version \
-    GIT_CONFIG_VALUE_1=HTTP/1.1 \
-    go mod download
+RUN --mount=type=secret,id=github_token,required=false \
+    if [ -s /run/secrets/github_token ]; then \
+        TOKEN="$(cat /run/secrets/github_token)" && \
+        GIT_CONFIG_COUNT=2 \
+        GIT_CONFIG_KEY_0="url.https://${TOKEN}@${GITHUB_REWRITE_BASE}/.insteadOf" \
+        GIT_CONFIG_VALUE_0=https://github.com/ \
+        GIT_CONFIG_KEY_1=http.version \
+        GIT_CONFIG_VALUE_1=HTTP/1.1 \
+        go mod download; \
+    else \
+        GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0=http.version \
+        GIT_CONFIG_VALUE_0=HTTP/1.1 \
+        go mod download; \
+    fi
 COPY src ./src
 COPY main.go ./
 # 从前端阶段拷贝构建产物
-COPY --from=frontend /app/dist ./dist
+COPY --from=frontend /app/frontend/dist ./dist
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION=0.0.1
