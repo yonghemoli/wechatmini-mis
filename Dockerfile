@@ -2,9 +2,12 @@
 
 ARG ALPINE_MIRROR=mirrors.aliyun.com
 ARG GITHUB_REWRITE_BASE=github.com
+ARG NODE_IMAGE=node:22-alpine
+ARG GO_IMAGE=golang:1.24-alpine
+ARG ALPINE_IMAGE=alpine:3.20
 
 # ===== 阶段1: 前端构建 =====
-FROM node:22-alpine AS frontend
+FROM ${NODE_IMAGE} AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/yarn.lock ./
 RUN corepack enable \
@@ -13,7 +16,7 @@ COPY frontend/ ./
 RUN yarn build
 
 # ===== 阶段2: 后端构建 =====
-FROM golang:1.24-alpine AS builder
+FROM ${GO_IMAGE} AS builder
 ARG ALPINE_MIRROR
 ARG GITHUB_REWRITE_BASE
 RUN sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR}/g" /etc/apk/repositories \
@@ -50,7 +53,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     -o yonghemolimis .
 
 # ===== 阶段3: 最小运行镜像 =====
-FROM alpine:3.20
+FROM ${ALPINE_IMAGE}
 ARG ALPINE_MIRROR
 WORKDIR /app
 RUN sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR}/g" /etc/apk/repositories \
