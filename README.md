@@ -1,7 +1,5 @@
 # yonhemoli-mis
 
-家政业务 MIS 管理端。MIS 是公司的“大脑”和“发动机”，初期目标不是展示好看，而是让运营、客服和管理者高效发现并处理异常。
-
 ## 当前项目状态
 
 - 技术栈：Go 后端 + Vite/React/Ant Design 前端。
@@ -51,67 +49,7 @@
    - 独立全屏聊天页。
    - 支持会话列表、消息查看、文本回复、标记已读和关闭会话。
 
-## 后续升级记录
-
-后续可以继续处理以下事项：
-
-- 权限体系：按老板/运营/客服/财务分配菜单和操作权限。
-- 小程序联动：后续 `/api/mini` 首页服务列表应从 `services` 和 `service_types` 表读取。
-
-## 小程序接口
-
-小程序端接口使用独立前缀 `/api/mini`，不走管理端 `/api/v1` 登录态。
-
-当前已提供：
-
-- `POST /api/mini/auth/wechat-login`：微信授权登录 mock。
-- `POST /api/mini/auth/phone-code`：发送手机号验证码 mock。
-- `POST /api/mini/auth/phone-login`：手机号验证码登录 mock。
-- `GET /api/mini/user/profile`：获取当前用户信息。
-- `GET /api/mini/appointment/home`：预约页首页数据。
-- `GET /api/mini/stores/nearest`：获取最近的可服务门店。
-- `GET /api/mini/service-categories`：服务类型枚举。
-- `GET /api/mini/service-categories/:id/services`：获取某个服务类型下的预约服务。
-- `GET /api/mini/services`：服务项目列表，支持 `category`、`keyword` 查询。
-- `GET /api/mini/services/search`：搜索服务项目，参数同 `services`。
-- `GET /api/mini/services/:id`：服务项目详情。
-- `GET /api/mini/service-areas`：服务范围。
-- `GET /api/mini/addresses`：常用地址列表。
-- `POST /api/mini/addresses`：新增地址。
-- `PUT /api/mini/addresses/:id/default`：设为默认地址。
-- `DELETE /api/mini/addresses/:id`：删除地址。
-- `GET /api/mini/service-targets`：老人/孩子服务对象列表。
-- `POST /api/mini/service-targets`：新增服务对象。
-- `PUT /api/mini/service-targets/:id/default`：设为默认服务对象。
-- `DELETE /api/mini/service-targets/:id`：删除服务对象。
-- `GET /api/mini/meal/pricing`：配菜价格配置。
-- `GET /api/mini/meal/dishes`：菜品列表。
-- `GET /api/mini/meal/dishes/:nameOrId`：菜品详情。
-- `GET /api/mini/meal/packages`：官方配菜套餐。
-- `GET /api/mini/meal/custom-packages`：我的配菜套餐。
-- `POST /api/mini/meal/custom-packages`：保存个性化套餐。
-- `DELETE /api/mini/meal/custom-packages/:id`：删除个性化套餐。
-- `GET /api/mini/orders`：订单分页列表。
-- `GET /api/mini/orders/:id`：订单详情。
-- `POST /api/mini/orders`：创建服务预约/配菜订单。
-- `PUT /api/mini/orders/:id/status`：更新订单状态。
-- `POST /api/mini/orders/:id/cancel`：取消订单。
-- `POST /api/mini/payments/wechat/prepay`：微信支付预下单 mock。
-- `POST /api/mini/payments/wechat/notify`：微信支付回调占位。
-
-当前实现是内存 mock，目的是满足小程序端按字段契约联调。正式上线前需要替换为微信登录、JWT 校验、数据库持久化、订单状态机和微信支付签名验签。
-
-## 后端数据库
-
-业务数据库仅支持 MySQL，通过环境变量配置：
-
-```dotenv
-MIS_DB_DRIVER=mysql
-MIS_DB_DSN=root:password@tcp(127.0.0.1:3306)/yonhemoli_mis?charset=utf8mb4&parseTime=True&loc=Local
-MIS_DB_AUTO_MIGRATE=false
-```
-
-后台入口为 `/admin`，管理端接口为 `/api/v1`，小程序接口为 `/api/mini`。
+后台入口为 `/admin`，管理端接口为 `/api/v1`，小程序接口为 `/api/mini`。小程序完整接口文档见 [docs/mini-api.md](docs/mini-api.md)。
 
 ## 初始化数据
 

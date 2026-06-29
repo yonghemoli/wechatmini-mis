@@ -21,6 +21,7 @@ func (AdminDO) TableName() string { return "admins" }
 
 type OrderDO struct {
 	ID            string    `gorm:"size:32;primaryKey" json:"id"`
+	UserID        string    `gorm:"size:40;index;column:user_id" json:"userId"`
 	Customer      string    `gorm:"size:64;not null" json:"customer"`
 	Phone         string    `gorm:"size:32;not null" json:"phone"`
 	Service       string    `gorm:"size:128;not null" json:"service"`
@@ -31,6 +32,7 @@ type OrderDO struct {
 	Staff         string    `gorm:"size:64;not null;default:''" json:"staff"`
 	InternalNote  string    `gorm:"type:text;column:internal_note" json:"internalNote"`
 	CloseReason   string    `gorm:"type:text;column:close_reason" json:"closeReason"`
+	MiniDeleted   bool      `gorm:"not null;default:false;column:mini_deleted" json:"miniDeleted"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
@@ -41,8 +43,11 @@ type CustomerDO struct {
 	ID          string    `gorm:"size:32;primaryKey" json:"id"`
 	Avatar      string    `gorm:"size:255;not null;default:''" json:"avatar"`
 	Nickname    string    `gorm:"size:64;not null" json:"nickname"`
+	Phone       string    `gorm:"size:32;not null;default:''" json:"phone"`
+	Signature   string    `gorm:"size:255;not null;default:''" json:"signature"`
 	TotalSpent  int       `gorm:"not null;default:0;column:total_spent" json:"totalSpent"`
 	LastOrderAt string    `gorm:"size:32;column:last_order_at" json:"lastOrderAt"`
+	LastLoginAt string    `gorm:"size:32;column:last_login_at" json:"lastLoginAt"`
 	Status      string    `gorm:"size:32;index;not null;default:'active'" json:"status"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
@@ -121,16 +126,16 @@ type AddressDO struct {
 func (AddressDO) TableName() string { return "addresses" }
 
 type ServiceTargetDO struct {
-	ID          string    `gorm:"size:32;primaryKey" json:"id"`
-	UserID      string    `gorm:"size:40;index;column:user_id" json:"userId"`
-	Name        string    `gorm:"size:64;not null" json:"name"`
-	Category    string    `gorm:"size:32;index;not null" json:"category"`
-	Relation    string    `gorm:"size:32;not null" json:"relation"`
-	Age         string    `gorm:"size:32;not null" json:"age"`
-	Note        string    `gorm:"size:255;not null;default:''" json:"note"`
-	IsDefault   bool      `gorm:"not null;default:false;column:is_default" json:"isDefault"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID        string    `gorm:"size:32;primaryKey" json:"id"`
+	UserID    string    `gorm:"size:40;index;column:user_id" json:"userId"`
+	Name      string    `gorm:"size:64;not null" json:"name"`
+	Category  string    `gorm:"size:32;index;not null" json:"category"`
+	Relation  string    `gorm:"size:32;not null" json:"relation"`
+	Age       string    `gorm:"size:32;not null" json:"age"`
+	Note      string    `gorm:"size:255;not null;default:''" json:"note"`
+	IsDefault bool      `gorm:"not null;default:false;column:is_default" json:"isDefault"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (ServiceTargetDO) TableName() string { return "service_targets" }

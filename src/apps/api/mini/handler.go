@@ -27,10 +27,12 @@ type PageData struct {
 }
 
 type User struct {
-	ID        string `json:"id"`
-	NickName  string `json:"nickName"`
-	AvatarURL string `json:"avatarUrl"`
-	Phone     string `json:"phone"`
+	ID          string `json:"id"`
+	NickName    string `json:"nickName"`
+	AvatarURL   string `json:"avatarUrl"`
+	Signature   string `json:"signature"`
+	Phone       string `json:"phone"`
+	LastLoginAt string `json:"lastLoginAt"`
 }
 
 type Service struct {
@@ -160,6 +162,7 @@ func RegisterRoutes(r gin.IRouter) {
 	r.POST("/auth/phone-code", PhoneCode)
 	r.POST("/auth/phone-login", PhoneLogin)
 	r.GET("/user/profile", UserProfile)
+	r.PUT("/user/profile", UpdateUserProfile)
 	r.GET("/appointment/home", AppointmentHome)
 	r.GET("/stores/nearest", NearestStore)
 	r.GET("/service-categories", ListServiceCategories)
@@ -169,11 +172,15 @@ func RegisterRoutes(r gin.IRouter) {
 	r.GET("/services/:id", GetService)
 	r.GET("/service-areas", ServiceAreas)
 	r.GET("/addresses", ListAddresses)
+	r.GET("/addresses/:id", GetAddress)
 	r.POST("/addresses", CreateAddress)
+	r.PUT("/addresses/:id", UpdateAddress)
 	r.PUT("/addresses/:id/default", SetDefaultAddress)
 	r.DELETE("/addresses/:id", DeleteAddress)
 	r.GET("/service-targets", ListServiceTargets)
+	r.GET("/service-targets/:id", GetServiceTarget)
 	r.POST("/service-targets", CreateServiceTarget)
+	r.PUT("/service-targets/:id", UpdateServiceTarget)
 	r.PUT("/service-targets/:id/default", SetDefaultServiceTarget)
 	r.DELETE("/service-targets/:id", DeleteServiceTarget)
 	r.GET("/meal/pricing", MealPricing)
@@ -181,13 +188,16 @@ func RegisterRoutes(r gin.IRouter) {
 	r.GET("/meal/dishes/:nameOrId", GetDish)
 	r.GET("/meal/packages", ListMealPackages)
 	r.GET("/meal/custom-packages", ListCustomPackages)
+	r.GET("/meal/custom-packages/:id", GetCustomPackage)
 	r.POST("/meal/custom-packages", CreateCustomPackage)
+	r.PUT("/meal/custom-packages/:id", UpdateCustomPackage)
 	r.DELETE("/meal/custom-packages/:id", DeleteCustomPackage)
 	r.GET("/orders", ListOrders)
 	r.GET("/orders/:id", GetOrder)
 	r.POST("/orders", CreateOrder)
 	r.PUT("/orders/:id/status", UpdateOrderStatus)
 	r.POST("/orders/:id/cancel", CancelOrder)
+	r.DELETE("/orders/:id", DeleteOrder)
 	r.POST("/payments/wechat/prepay", WechatPrepay)
 	r.POST("/payments/wechat/notify", WechatNotify)
 	r.GET("/chat/session", ChatSession)
@@ -223,6 +233,8 @@ func WechatLogin(c *gin.Context) {
 	if req.AvatarURL != "" {
 		currentUser.AvatarURL = req.AvatarURL
 	}
+	_ = ensureMiniUser(req.NickName, req.AvatarURL, currentUser.Phone)
+	_ = db.TouchMiniUserLogin(currentUser.ID)
 	ok(c, gin.H{"token": "dev-mini-token", "user": currentUser})
 }
 
@@ -251,10 +263,53 @@ func PhoneLogin(c *gin.Context) {
 		return
 	}
 	currentUser.Phone = req.Phone
+	_ = ensureMiniUser(currentUser.NickName, currentUser.AvatarURL, req.Phone)
+	_ = db.TouchMiniUserLogin(currentUser.ID)
 	ok(c, gin.H{"token": "dev-mini-token", "user": currentUser})
 }
 
-func UserProfile(c *gin.Context) { ok(c, bearerUser(c)) }
+func UserProfile(c *gin.Context) {
+	row, err := db.GetMiniUserProfile(currentUser.ID)
+	if err != nil {
+		ok(c, bearerUser(c))
+		return
+	}
+	ok(c, userFromDO(*row))
+}
+
+func UpdateUserProfile(c *gin.Context) {
+	var req User
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, "invalid request")
+		return
+	}
+	row, err := db.GetMiniUserProfile(currentUser.ID)
+	if err != nil {
+		row = &db.CustomerDO{ID: currentUser.ID, Status: db.CustomerStatusActive}
+	}
+	if req.NickName != "" {
+		row.Nickname = req.NickName
+		currentUser.NickName = req.NickName
+	}
+	if req.AvatarURL != "" {
+		row.Avatar = req.AvatarURL
+		currentUser.AvatarURL = req.AvatarURL
+	}
+	row.Signature = req.Signature
+	if req.Phone != "" {
+		row.Phone = req.Phone
+		currentUser.Phone = req.Phone
+	}
+	if row.Nickname == "" {
+		row.Nickname = currentUser.NickName
+	}
+	row.UpdatedAt = time.Now()
+	if err := db.UpsertMiniUserProfile(row); err != nil {
+		fail(c, err.Error())
+		return
+	}
+	ok(c, userFromDO(*row))
+}
 
 func AppointmentHome(c *gin.Context) {
 	store, _ := nearestStore()
@@ -323,6 +378,15 @@ func ListAddresses(c *gin.Context) {
 	ok(c, gin.H{"list": addressRows(rows)})
 }
 
+func GetAddress(c *gin.Context) {
+	row, err := db.GetMiniAddress(currentUser.ID, c.Param("id"))
+	if err != nil {
+		fail(c, "address not found")
+		return
+	}
+	ok(c, addressRow(*row))
+}
+
 func CreateAddress(c *gin.Context) {
 	var req Address
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -340,6 +404,33 @@ func CreateAddress(c *gin.Context) {
 		IsDefault:   req.IsDefault,
 	}
 	if err := db.CreateMiniAddress(row); err != nil {
+		fail(c, err.Error())
+		return
+	}
+	if row.IsDefault {
+		_ = db.SetMiniAddressDefault(currentUser.ID, row.ID)
+	}
+	ok(c, req)
+}
+
+func UpdateAddress(c *gin.Context) {
+	var req Address
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, "invalid request")
+		return
+	}
+	req.ID = c.Param("id")
+	row := &db.AddressDO{
+		ID:          req.ID,
+		UserID:      currentUser.ID,
+		ContactName: req.ContactName,
+		Phone:       req.Phone,
+		District:    req.District,
+		Detail:      req.Detail,
+		Tag:         req.Tag,
+		IsDefault:   req.IsDefault,
+	}
+	if err := db.UpdateMiniAddress(currentUser.ID, row); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -375,6 +466,15 @@ func ListServiceTargets(c *gin.Context) {
 	ok(c, gin.H{"list": serviceTargetRows(rows)})
 }
 
+func GetServiceTarget(c *gin.Context) {
+	row, err := db.GetMiniServiceTarget(currentUser.ID, c.Param("id"))
+	if err != nil {
+		fail(c, "service target not found")
+		return
+	}
+	ok(c, serviceTargetRow(*row))
+}
+
 func CreateServiceTarget(c *gin.Context) {
 	var req ServiceTarget
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -392,6 +492,33 @@ func CreateServiceTarget(c *gin.Context) {
 		IsDefault: req.IsDefault,
 	}
 	if err := db.CreateMiniServiceTarget(row); err != nil {
+		fail(c, err.Error())
+		return
+	}
+	if row.IsDefault {
+		_ = db.SetMiniServiceTargetDefault(currentUser.ID, row.ID)
+	}
+	ok(c, req)
+}
+
+func UpdateServiceTarget(c *gin.Context) {
+	var req ServiceTarget
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, "invalid request")
+		return
+	}
+	req.ID = c.Param("id")
+	row := &db.ServiceTargetDO{
+		ID:        req.ID,
+		UserID:    currentUser.ID,
+		Name:      req.Name,
+		Category:  req.Category,
+		Relation:  req.Relation,
+		Age:       req.Age,
+		Note:      req.Note,
+		IsDefault: req.IsDefault,
+	}
+	if err := db.UpdateMiniServiceTarget(currentUser.ID, row); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -455,6 +582,15 @@ func ListCustomPackages(c *gin.Context) {
 	ok(c, gin.H{"list": mealPackageRows(rows)})
 }
 
+func GetCustomPackage(c *gin.Context) {
+	row, err := db.GetMiniMealPackage(currentUser.ID, c.Param("id"))
+	if err != nil {
+		fail(c, "meal package not found")
+		return
+	}
+	ok(c, mealPackageRow(*row))
+}
+
 func CreateCustomPackage(c *gin.Context) {
 	var req MealPackage
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -474,6 +610,30 @@ func CreateCustomPackage(c *gin.Context) {
 		fail(c, err.Error())
 		return
 	}
+	req.ID = row.ID
+	ok(c, req)
+}
+
+func UpdateCustomPackage(c *gin.Context) {
+	var req MealPackage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, "invalid request")
+		return
+	}
+	req.ID = c.Param("id")
+	row := &db.MealPackageDO{
+		ID:          req.ID,
+		UserID:      currentUser.ID,
+		PackageType: "custom",
+		Name:        req.Name,
+		Scene:       req.Scene,
+		Price:       req.Price,
+		Dishes:      db.MarshalStringSlice(req.Dishes),
+	}
+	if err := db.UpdateMiniMealPackage(currentUser.ID, row); err != nil {
+		fail(c, err.Error())
+		return
+	}
 	ok(c, req)
 }
 
@@ -489,7 +649,7 @@ func ListOrders(c *gin.Context) {
 	status := c.DefaultQuery("status", "all")
 	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1)
 	pageSize := parsePositiveInt(c.DefaultQuery("pageSize", "20"), 20)
-	rows, total, err := db.ListOrders(db.OrderListQuery{Status: status, Page: page, Size: pageSize})
+	rows, total, err := db.ListMiniOrders(currentUser.ID, status, page, pageSize)
 	if err != nil {
 		fail(c, err.Error())
 		return
@@ -498,7 +658,7 @@ func ListOrders(c *gin.Context) {
 }
 
 func GetOrder(c *gin.Context) {
-	row, err := db.GetOrderByID(c.Param("id"))
+	row, err := db.GetMiniOrder(currentUser.ID, c.Param("id"))
 	if err != nil {
 		fail(c, "order not found")
 		return
@@ -514,6 +674,7 @@ func CreateOrder(c *gin.Context) {
 	}
 	row := &db.OrderDO{
 		ID:            fmt.Sprintf("YH%s%03d", time.Now().Format("20060102150405"), time.Now().Nanosecond()%1000),
+		UserID:        currentUser.ID,
 		Customer:      req.ContactName,
 		Phone:         req.Phone,
 		Service:       req.ServiceName,
@@ -547,6 +708,14 @@ func UpdateOrderStatus(c *gin.Context) {
 		return
 	}
 	ok(c, orderRow(*row))
+}
+
+func DeleteOrder(c *gin.Context) {
+	if err := db.DeleteMiniOrder(currentUser.ID, c.Param("id")); err != nil {
+		fail(c, err.Error())
+		return
+	}
+	ok(c, gin.H{"id": c.Param("id")})
 }
 
 func CancelOrder(c *gin.Context) {
@@ -647,6 +816,39 @@ func storeFromDO(row db.ShopDO) Store {
 	}
 }
 
+func ensureMiniUser(nickName, avatarURL, phone string) error {
+	row, err := db.GetMiniUserProfile(currentUser.ID)
+	if err != nil {
+		row = &db.CustomerDO{ID: currentUser.ID, Status: db.CustomerStatusActive, CreatedAt: time.Now()}
+	}
+	if nickName != "" {
+		row.Nickname = nickName
+	}
+	if row.Nickname == "" {
+		row.Nickname = currentUser.NickName
+	}
+	if avatarURL != "" {
+		row.Avatar = avatarURL
+	}
+	if phone != "" {
+		row.Phone = phone
+	}
+	row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
+	row.UpdatedAt = time.Now()
+	return db.UpsertMiniUserProfile(row)
+}
+
+func userFromDO(row db.CustomerDO) User {
+	return User{
+		ID:          row.ID,
+		NickName:    row.Nickname,
+		AvatarURL:   row.Avatar,
+		Signature:   row.Signature,
+		Phone:       row.Phone,
+		LastLoginAt: row.LastLoginAt,
+	}
+}
+
 func appointmentGroupsFromDB() []AppointmentGroup {
 	types, err := db.ListServiceTypes("")
 	if err != nil {
@@ -723,33 +925,41 @@ func serviceFromDOAsService(row db.ServiceDO) Service {
 func addressRows(rows []db.AddressDO) []Address {
 	out := make([]Address, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, Address{
-			ID:          row.ID,
-			ContactName: row.ContactName,
-			Phone:       row.Phone,
-			District:    row.District,
-			Detail:      row.Detail,
-			Tag:         row.Tag,
-			IsDefault:   row.IsDefault,
-		})
+		out = append(out, addressRow(row))
 	}
 	return out
+}
+
+func addressRow(row db.AddressDO) Address {
+	return Address{
+		ID:          row.ID,
+		ContactName: row.ContactName,
+		Phone:       row.Phone,
+		District:    row.District,
+		Detail:      row.Detail,
+		Tag:         row.Tag,
+		IsDefault:   row.IsDefault,
+	}
 }
 
 func serviceTargetRows(rows []db.ServiceTargetDO) []ServiceTarget {
 	out := make([]ServiceTarget, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, ServiceTarget{
-			ID:        row.ID,
-			Name:      row.Name,
-			Category:  row.Category,
-			Relation:  row.Relation,
-			Age:       row.Age,
-			Note:      row.Note,
-			IsDefault: row.IsDefault,
-		})
+		out = append(out, serviceTargetRow(row))
 	}
 	return out
+}
+
+func serviceTargetRow(row db.ServiceTargetDO) ServiceTarget {
+	return ServiceTarget{
+		ID:        row.ID,
+		Name:      row.Name,
+		Category:  row.Category,
+		Relation:  row.Relation,
+		Age:       row.Age,
+		Note:      row.Note,
+		IsDefault: row.IsDefault,
+	}
 }
 
 func dishRows(rows []db.DishDO) []Dish {
@@ -777,15 +987,19 @@ func dishRow(row db.DishDO) Dish {
 func mealPackageRows(rows []db.MealPackageDO) []MealPackage {
 	out := make([]MealPackage, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, MealPackage{
-			ID:     row.ID,
-			Name:   row.Name,
-			Scene:  row.Scene,
-			Price:  row.Price,
-			Dishes: db.DecodeMiniStringSlice(row.Dishes),
-		})
+		out = append(out, mealPackageRow(row))
 	}
 	return out
+}
+
+func mealPackageRow(row db.MealPackageDO) MealPackage {
+	return MealPackage{
+		ID:     row.ID,
+		Name:   row.Name,
+		Scene:  row.Scene,
+		Price:  row.Price,
+		Dishes: db.DecodeMiniStringSlice(row.Dishes),
+	}
 }
 
 func orderRows(rows []db.OrderDO) []Order {
