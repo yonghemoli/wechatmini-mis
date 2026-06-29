@@ -6,6 +6,27 @@ import (
 	"time"
 )
 
+func GetAppConfig(key string) (*AppConfigDO, error) {
+	var row AppConfigDO
+	if err := Get().First(&row, "`key` = ?", key).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func MustAppConfigJSON(key string, fallback string) string {
+	row, err := GetAppConfig(key)
+	if err != nil || row == nil || row.Value == "" {
+		return fallback
+	}
+	return row.Value
+}
+
+func UpsertAppConfig(key, value, note string) error {
+	row := &AppConfigDO{Key: key, Value: value, Note: note, UpdatedAt: time.Now()}
+	return Get().Save(row).Error
+}
+
 func ListMiniAddresses(userID string) ([]AddressDO, error) {
 	var rows []AddressDO
 	query := Get().Model(&AddressDO{})

@@ -107,6 +107,22 @@ INSERT INTO meal_packages (id, user_id, package_type, name, scene, price, dishes
 SELECT 'custom_pkg_1', 'U10081', 'custom', '我家的晚餐组合', '少油少盐', 24, '["番茄炒蛋","青椒肉丝"]', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM meal_packages WHERE id = 'custom_pkg_1');
 
+INSERT INTO app_configs (`key`, value, note, created_at, updated_at)
+SELECT 'mini.home', '{"appName":"永和护理","banners":["/assets/banners/home-care.png","/assets/banners/meal-prep.png"],"notice":"服务预约后，客服将在 10 分钟内确认上门时间。"}', '小程序首页配置', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM app_configs WHERE `key` = 'mini.home');
+
+INSERT INTO app_configs (`key`, value, note, created_at, updated_at)
+SELECT 'mini.appointment.tabs', '[{"id":"all","name":"所有"}]', '预约页 tab 配置', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM app_configs WHERE `key` = 'mini.appointment.tabs');
+
+INSERT INTO app_configs (`key`, value, note, created_at, updated_at)
+SELECT 'mini.service_areas', '{"city":"南宁","districts":["青秀区","兴宁区","西乡塘区","良庆区","江南区"],"notes":["具体地址以客服确认为准"]}', '服务范围配置', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM app_configs WHERE `key` = 'mini.service_areas');
+
+INSERT INTO app_configs (`key`, value, note, created_at, updated_at)
+SELECT 'mini.meal_pricing', '{"dishPrice":12,"deliveryFee":8}', '配菜价格配置', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM app_configs WHERE `key` = 'mini.meal_pricing');
+
 INSERT INTO faqs (id, question, answer, category, sort_order, visible, created_at, updated_at)
 SELECT 1, '下单后多久会有人联系？', '正常情况下客服会在 10 分钟内联系确认服务时间和地址。', '下单', 10, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM faqs WHERE id = 1);
