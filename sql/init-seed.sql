@@ -64,20 +64,48 @@ SELECT 2, '设备清洗', '空调、油烟机、洗衣机等家电清洗服务',
 WHERE NOT EXISTS (SELECT 1 FROM service_types WHERE id = 2);
 
 INSERT INTO services (id, type_id, name, image, price, unit, description, visible, sort_order, created_at, updated_at)
-SELECT 1, 1, '日常保洁', '/me.png', 66, '小时', '适合日常维护，覆盖客厅、卧室、厨房和卫生间基础清洁。', TRUE, 10, NOW(), NOW()
+SELECT 1, 1, '日常保洁', '/me.png', 66, '小时', '日常保洁', '适合家庭日常维护', '客厅、卧室、厨房、卫生间基础清洁', '66 元/小时起', '约 3 小时', '服务时长', '["3 小时","4 小时","5 小时"]', '["日常打扫","租房保洁","老人家庭"]', '["地面清洁","台面擦拭","厨卫基础清洁"]', '["预约下单","客服确认","阿姨上门","验收核销"]', '["不含高空作业","不含重油污深度清洁"]', '适合日常维护，覆盖客厅、卧室、厨房和卫生间基础清洁。', TRUE, 10, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM services WHERE id = 1);
 
 INSERT INTO services (id, type_id, name, image, price, unit, description, visible, sort_order, created_at, updated_at)
-SELECT 2, 1, '深度保洁', '/me.png', 82, '小时', '重点处理油污、水垢和卫生死角。', TRUE, 20, NOW(), NOW()
+SELECT 2, 1, '深度保洁', '/me.png', 82, '小时', '深度保洁', '适合深度清洁需求', '重点处理油污、水垢和卫生死角', '82 元/小时起', '约 4 小时', '服务时长', '["4 小时","5 小时","6 小时"]', '["油污处理","水垢处理","卫生死角"]', '["厨房深度清洁","卫浴深度清洁","窗框清洁"]', '["需求沟通","上门评估","深度清洁","验收"]', '["需提前确认清洁范围","部分顽固污渍可能加价"]', '重点处理油污、水垢和卫生死角。', TRUE, 20, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM services WHERE id = 2);
 
 INSERT INTO services (id, type_id, name, image, price, unit, description, visible, sort_order, created_at, updated_at)
-SELECT 3, 2, '空调清洗', '/me.png', 118, '台', '拆洗滤网、蒸发器除菌、外壳清洁。', TRUE, 30, NOW(), NOW()
+SELECT 3, 2, '空调清洗', '/me.png', 118, '台', '空调清洗', '适合换季前后', '清洗滤网、蒸发器和出风口', '预约后报价', '约 1 小时/台', '清洗数量', '["挂机 1 台","挂机 2 台","柜机 1 台"]', '["卧室空调","客厅空调","换季清洁"]', '["滤网清洗","蒸发器清洁","出风口擦洗"]', '["预约确认","师傅上门","现场清洗","验收完成"]', '["高空外机不在服务范围内","具体地址以客服确认为准"]', '拆洗滤网、蒸发器除菌、外壳清洁。', TRUE, 30, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM services WHERE id = 3);
 
 INSERT INTO shops (id, name, contact_name, phone, address, business_hours, status, remark, created_at, updated_at)
 SELECT 1, '南宁青秀店', '李店长', '0771-8888888', '广西南宁青秀区民族大道 100 号', '09:00-18:00', 'open', '主城区服务门店', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM shops WHERE id = 1);
+
+INSERT INTO addresses (id, user_id, contact_name, phone, district, detail, tag, is_default, created_at, updated_at)
+SELECT 'addr_1', 'U10081', '林女士', '138****3201', '广西 南宁 青秀区', '3 栋 2 单元 801', '家', TRUE, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM addresses WHERE id = 'addr_1');
+
+INSERT INTO service_targets (id, user_id, name, category, relation, age, note, is_default, created_at, updated_at)
+SELECT 'target_1', 'U10081', '父亲', 'eldercare', '父母', '70-79 岁', '行动较慢', TRUE, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM service_targets WHERE id = 'target_1');
+
+INSERT INTO dishes (id, name, scene, tag, price, ingredients, video_title, video_url, comments, created_at, updated_at)
+SELECT 'tomato-egg', '番茄炒蛋', '酸甜开胃，适合日常晚餐', '家常', 12, '["番茄 300g","鸡蛋 3 个"]', '番茄炒蛋 8 分钟快手做法', 'https://example.com/tomato-egg', '["孩子很爱吃"]', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM dishes WHERE id = 'tomato-egg');
+
+INSERT INTO dishes (id, name, scene, tag, price, ingredients, video_title, video_url, comments, created_at, updated_at)
+SELECT 'pepper-pork', '青椒肉丝', '下饭快手菜', '家常', 16, '["青椒 250g","猪肉 200g"]', '青椒肉丝家常做法', 'https://example.com/pepper-pork', '["适合工作日晚餐"]', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM dishes WHERE id = 'pepper-pork');
+
+INSERT INTO dishes (id, name, scene, tag, price, ingredients, video_title, video_url, comments, created_at, updated_at)
+SELECT 'seaweed-egg-soup', '紫菜蛋花汤', '清淡快手，适合搭配主菜', '汤品', 10, '["紫菜 20g","鸡蛋 2 个"]', '紫菜蛋花汤家常做法', 'https://example.com/seaweed-egg-soup', '["老人孩子都适合"]', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM dishes WHERE id = 'seaweed-egg-soup');
+
+INSERT INTO meal_packages (id, user_id, package_type, name, scene, price, dishes, created_at, updated_at)
+SELECT 'pkg_1', NULL, 'official', '三菜一汤套餐', '适合 2-3 人工作日晚餐', 68, '["番茄炒蛋","青椒肉丝","紫菜蛋花汤"]', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM meal_packages WHERE id = 'pkg_1');
+
+INSERT INTO meal_packages (id, user_id, package_type, name, scene, price, dishes, created_at, updated_at)
+SELECT 'custom_pkg_1', 'U10081', 'custom', '我家的晚餐组合', '少油少盐', 24, '["番茄炒蛋","青椒肉丝"]', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM meal_packages WHERE id = 'custom_pkg_1');
 
 INSERT INTO faqs (id, question, answer, category, sort_order, visible, created_at, updated_at)
 SELECT 1, '下单后多久会有人联系？', '正常情况下客服会在 10 分钟内联系确认服务时间和地址。', '下单', 10, TRUE, NOW(), NOW()

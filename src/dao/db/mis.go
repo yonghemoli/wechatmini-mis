@@ -10,6 +10,7 @@ import (
 const (
 	OrderStatusPendingService = "pending_service"
 	OrderStatusPendingConfirm = "pending_confirm"
+	OrderStatusCancelled      = "cancelled"
 	OrderStatusCompleted      = "completed"
 	OrderStatusException      = "exception"
 	OrderStatusRefunded       = "refunded"

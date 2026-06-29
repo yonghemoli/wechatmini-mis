@@ -1,7 +1,9 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -132,6 +134,47 @@ func UpdateServiceVisible(id uint, visible bool) (*ServiceDO, error) {
 		return nil, err
 	}
 	return &row, nil
+}
+
+func ListMiniServices(typeID uint, keyword string) ([]ServiceDO, error) {
+	var rows []ServiceDO
+	query := Get().Model(&ServiceDO{}).Where("visible = ?", true)
+	if typeID > 0 {
+		query = query.Where("type_id = ?", typeID)
+	}
+	if keyword != "" {
+		like := "%" + strings.TrimSpace(keyword) + "%"
+		query = query.Where("name LIKE ? OR title LIKE ? OR scene LIKE ? OR summary LIKE ?", like, like, like, like)
+	}
+	if err := query.Order("sort_order ASC, id DESC").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	typeNames := map[uint]string{}
+	var types []ServiceTypeDO
+	_ = Get().Find(&types).Error
+	for _, item := range types {
+		typeNames[item.ID] = item.Name
+	}
+	for i := range rows {
+		rows[i].TypeName = typeNames[rows[i].TypeID]
+	}
+	return rows, nil
+}
+
+func GetMiniService(id string) (*ServiceDO, error) {
+	var row ServiceDO
+	if err := Get().First(&row, "id = ? AND visible = ?", id, true).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func DecodeMiniStringSlice(value string) []string {
+	var rows []string
+	if err := json.Unmarshal([]byte(value), &rows); err != nil {
+		return []string{}
+	}
+	return rows
 }
 
 func ListShops() ([]ShopDO, error) {

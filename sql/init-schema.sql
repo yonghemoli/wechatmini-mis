@@ -68,6 +68,17 @@ CREATE TABLE IF NOT EXISTS services (
     image VARCHAR(255) NOT NULL DEFAULT '',
     price INT NOT NULL DEFAULT 0,
     unit VARCHAR(32) NOT NULL DEFAULT '小时',
+    title VARCHAR(128) NOT NULL DEFAULT '',
+    scene VARCHAR(255) NOT NULL DEFAULT '',
+    summary TEXT,
+    price_text VARCHAR(64) NOT NULL DEFAULT '',
+    duration_text VARCHAR(64) NOT NULL DEFAULT '',
+    requirement_label VARCHAR(64) NOT NULL DEFAULT '',
+    requirement_options TEXT NOT NULL,
+    suitable_for TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    process TEXT NOT NULL,
+    notes TEXT NOT NULL,
     description TEXT,
     visible BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order INT NOT NULL DEFAULT 0,
@@ -90,6 +101,68 @@ CREATE TABLE IF NOT EXISTS shops (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS addresses (
+    id VARCHAR(32) NOT NULL,
+    user_id VARCHAR(40) DEFAULT NULL,
+    contact_name VARCHAR(64) NOT NULL,
+    phone VARCHAR(32) NOT NULL,
+    district VARCHAR(128) NOT NULL,
+    detail VARCHAR(255) NOT NULL,
+    tag VARCHAR(32) NOT NULL DEFAULT '',
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_addresses_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS service_targets (
+    id VARCHAR(32) NOT NULL,
+    user_id VARCHAR(40) DEFAULT NULL,
+    name VARCHAR(64) NOT NULL,
+    category VARCHAR(32) NOT NULL,
+    relation VARCHAR(32) NOT NULL,
+    age VARCHAR(32) NOT NULL,
+    note VARCHAR(255) NOT NULL DEFAULT '',
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_service_targets_user_id (user_id),
+    KEY idx_service_targets_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS dishes (
+    id VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    scene VARCHAR(255) NOT NULL,
+    tag VARCHAR(32) NOT NULL DEFAULT '',
+    price INT NOT NULL DEFAULT 0,
+    ingredients TEXT NOT NULL,
+    video_title VARCHAR(255) NOT NULL DEFAULT '',
+    video_url VARCHAR(255) NOT NULL DEFAULT '',
+    comments TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_dishes_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS meal_packages (
+    id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(40) DEFAULT NULL,
+    package_type VARCHAR(20) NOT NULL DEFAULT 'official',
+    name VARCHAR(128) NOT NULL,
+    scene VARCHAR(255) NOT NULL,
+    price INT NOT NULL DEFAULT 0,
+    dishes TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_meal_packages_user_id (user_id),
+    KEY idx_meal_packages_type (package_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS faqs (

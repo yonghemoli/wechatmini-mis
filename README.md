@@ -68,7 +68,6 @@
 - `POST /api/mini/auth/phone-code`：发送手机号验证码 mock。
 - `POST /api/mini/auth/phone-login`：手机号验证码登录 mock。
 - `GET /api/mini/user/profile`：获取当前用户信息。
-- `GET /api/mini/home`：小程序首页数据。
 - `GET /api/mini/appointment/home`：预约页首页数据。
 - `GET /api/mini/stores/nearest`：获取最近的可服务门店。
 - `GET /api/mini/service-categories`：服务类型枚举。
