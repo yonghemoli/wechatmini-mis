@@ -1,5 +1,5 @@
 -- Yonghemoli MIS schema.
--- Run this manually when initializing a MySQL database or after adding MIS tables.
+-- Safe to run repeatedly when initializing a MySQL database or upgrading old tables.
 
 CREATE TABLE IF NOT EXISTS admins (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -19,19 +19,26 @@ CREATE TABLE IF NOT EXISTS admins (
 
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(32) NOT NULL,
+    openid VARCHAR(128) DEFAULT NULL,
     avatar VARCHAR(255) NOT NULL DEFAULT '',
     nickname VARCHAR(64) NOT NULL,
+    phone VARCHAR(32) NOT NULL,
+    signature VARCHAR(255) NOT NULL DEFAULT '',
     total_spent INT NOT NULL DEFAULT 0,
     last_order_at VARCHAR(32) DEFAULT NULL,
+    last_login_at VARCHAR(32) DEFAULT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'active',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
+    UNIQUE KEY idx_users_openid (openid),
+    UNIQUE KEY idx_users_phone (phone),
     KEY idx_users_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS orders (
     id VARCHAR(32) NOT NULL,
+    user_id VARCHAR(40) DEFAULT NULL,
     customer VARCHAR(64) NOT NULL,
     phone VARCHAR(32) NOT NULL,
     service VARCHAR(128) NOT NULL,
@@ -42,9 +49,11 @@ CREATE TABLE IF NOT EXISTS orders (
     staff VARCHAR(64) NOT NULL DEFAULT '',
     internal_note TEXT,
     close_reason TEXT,
+    mini_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
+    KEY idx_orders_user_id (user_id),
     KEY idx_orders_status (status),
     KEY idx_orders_source (source),
     KEY idx_orders_appointment_at (appointment_at)
@@ -212,3 +221,125 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     PRIMARY KEY (id),
     KEY idx_chat_messages_session_id (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Idempotent legacy-table upgrades.
+-- CREATE TABLE IF NOT EXISTS does not add columns to existing tables, so keep
+-- these guards in sync with new fields added to the CREATE TABLE definitions.
+SET @schema_name = DATABASE();
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE users ADD COLUMN openid VARCHAR(128) DEFAULT NULL AFTER id',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'openid'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE users ADD COLUMN phone VARCHAR(32) NOT NULL DEFAULT '''' AFTER nickname',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'phone'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE users ADD COLUMN signature VARCHAR(255) NOT NULL DEFAULT '''' AFTER phone',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'signature'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE users ADD COLUMN last_login_at VARCHAR(32) DEFAULT NULL AFTER last_order_at',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'last_login_at'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE users ADD UNIQUE KEY idx_users_openid (openid)',
+        'SET @schema_noop = 0')
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'users'
+      AND INDEX_NAME = 'idx_users_openid'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE users ADD UNIQUE KEY idx_users_phone (phone)',
+        'SET @schema_noop = 0')
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'users'
+      AND INDEX_NAME = 'idx_users_phone'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE orders ADD COLUMN user_id VARCHAR(40) DEFAULT NULL AFTER id',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'orders'
+      AND COLUMN_NAME = 'user_id'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE orders ADD COLUMN mini_deleted BOOLEAN NOT NULL DEFAULT FALSE AFTER close_reason',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'orders'
+      AND COLUMN_NAME = 'mini_deleted'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE orders ADD KEY idx_orders_user_id (user_id)',
+        'SET @schema_noop = 0')
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = @schema_name
+      AND TABLE_NAME = 'orders'
+      AND INDEX_NAME = 'idx_orders_user_id'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;

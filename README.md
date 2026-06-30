@@ -70,6 +70,8 @@ make db-seed
 make db-init
 ```
 
+`sql/init-schema.sql` 可以重复执行：新库会创建完整表结构；旧库会按 `information_schema` 判断并补齐新增字段和索引，例如 `users.phone`、`users.signature`、`users.last_login_at`、`orders.user_id`、`orders.mini_deleted` 和 `idx_orders_user_id`。
+
 默认管理员账号：
 
 ```text

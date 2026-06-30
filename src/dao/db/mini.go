@@ -14,6 +14,22 @@ func GetMiniUserProfile(userID string) (*CustomerDO, error) {
 	return &row, nil
 }
 
+func GetMiniUserByOpenID(openID string) (*CustomerDO, error) {
+	var row CustomerDO
+	if err := Get().First(&row, "openid = ?", openID).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func GetMiniUserByPhone(phone string) (*CustomerDO, error) {
+	var row CustomerDO
+	if err := Get().First(&row, "phone = ?", phone).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 func UpsertMiniUserProfile(row *CustomerDO) error {
 	if row.ID == "" {
 		return fmt.Errorf("user id required")

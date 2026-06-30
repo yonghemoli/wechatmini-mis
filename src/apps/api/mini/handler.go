@@ -152,7 +152,7 @@ type Order struct {
 
 var currentUser = User{
 	ID:        "U10081",
-	NickName:  "林女士",
+	NickName:  "永和护理",
 	AvatarURL: "",
 	Phone:     "13800000000",
 }
@@ -210,8 +210,35 @@ func ok(c *gin.Context, data interface{}) {
 }
 func fail(c *gin.Context, msg string) { c.JSON(http.StatusOK, R{Code: -1, Message: msg}) }
 func bearerUser(c *gin.Context) User {
-	_ = strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-	return currentUser
+	user, _ := requestUser(c)
+	return user
+}
+
+func requestUser(c *gin.Context) (User, string) {
+	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	userID := miniUserIDFromToken(token)
+	if userID == "" {
+		return User{}, ""
+	}
+	row, err := db.GetMiniUserProfile(userID)
+	if err != nil {
+		return User{ID: userID, NickName: currentUser.NickName, AvatarURL: currentUser.AvatarURL, Phone: currentUser.Phone}, userID
+	}
+	return userFromDO(*row), row.ID
+}
+
+func requestUserID(c *gin.Context) string {
+	_, userID := requestUser(c)
+	return userID
+}
+
+func requireUserID(c *gin.Context) (string, bool) {
+	userID := requestUserID(c)
+	if userID == "" {
+		fail(c, "unauthorized")
+		return "", false
+	}
+	return userID, true
 }
 
 func WechatLogin(c *gin.Context) {
@@ -227,15 +254,49 @@ func WechatLogin(c *gin.Context) {
 		fail(c, "invalid request")
 		return
 	}
-	if req.NickName != "" {
-		currentUser.NickName = req.NickName
+	if strings.TrimSpace(req.Code) == "" {
+		fail(c, "code required")
+		return
 	}
-	if req.AvatarURL != "" {
-		currentUser.AvatarURL = req.AvatarURL
+	wxSession, err := wxCodeToSession(req.Code)
+	if err != nil {
+		fail(c, err.Error())
+		return
 	}
-	_ = ensureMiniUser(req.NickName, req.AvatarURL, currentUser.Phone)
-	_ = db.TouchMiniUserLogin(currentUser.ID)
-	ok(c, gin.H{"token": "dev-mini-token", "user": currentUser})
+	if row, err := db.GetMiniUserByOpenID(wxSession.OpenID); err == nil && strings.TrimSpace(row.Phone) != "" {
+		row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
+		row.UpdatedAt = time.Now()
+		if err := db.UpsertMiniUserProfile(row); err != nil {
+			fail(c, err.Error())
+			return
+		}
+		ok(c, gin.H{"token": createMiniToken(row.ID), "user": userFromDO(*row), "isBoundPhone": true})
+		return
+	}
+	if strings.TrimSpace(req.PhoneCode) == "" {
+		fail(c, "phoneCode required")
+		return
+	}
+	phone, err := wxPhoneNumber(req.PhoneCode)
+	if err != nil {
+		fail(c, err.Error())
+		return
+	}
+	if strings.TrimSpace(phone) == "" {
+		fail(c, "phone required")
+		return
+	}
+	row, err := ensureMiniUser(wxSession.OpenID, req.NickName, req.AvatarURL, phone)
+	if err != nil {
+		fail(c, err.Error())
+		return
+	}
+	token := createMiniToken(row.ID)
+	ok(c, gin.H{
+		"token":        token,
+		"user":         userFromDO(*row),
+		"isBoundPhone": true,
+	})
 }
 
 func PhoneCode(c *gin.Context) {
@@ -262,19 +323,33 @@ func PhoneLogin(c *gin.Context) {
 		fail(c, "phone and code required")
 		return
 	}
-	currentUser.Phone = req.Phone
-	_ = ensureMiniUser(currentUser.NickName, currentUser.AvatarURL, req.Phone)
-	_ = db.TouchMiniUserLogin(currentUser.ID)
-	ok(c, gin.H{"token": "dev-mini-token", "user": currentUser})
+	row, err := db.GetMiniUserByPhone(req.Phone)
+	if err != nil {
+		row = &db.CustomerDO{
+			ID:        newMiniUserID(),
+			Phone:     req.Phone,
+			Nickname:  "微信用户",
+			Status:    db.CustomerStatusActive,
+			CreatedAt: time.Now(),
+		}
+	}
+	row.Phone = req.Phone
+	row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
+	row.UpdatedAt = time.Now()
+	if err := db.UpsertMiniUserProfile(row); err != nil {
+		fail(c, err.Error())
+		return
+	}
+	ok(c, gin.H{"token": createMiniToken(row.ID), "user": userFromDO(*row), "isBoundPhone": true})
 }
 
 func UserProfile(c *gin.Context) {
-	row, err := db.GetMiniUserProfile(currentUser.ID)
-	if err != nil {
-		ok(c, bearerUser(c))
+	user, _ := requestUser(c)
+	if user.ID == "" {
+		fail(c, "unauthorized")
 		return
 	}
-	ok(c, userFromDO(*row))
+	ok(c, user)
 }
 
 func UpdateUserProfile(c *gin.Context) {
@@ -283,23 +358,21 @@ func UpdateUserProfile(c *gin.Context) {
 		fail(c, "invalid request")
 		return
 	}
-	row, err := db.GetMiniUserProfile(currentUser.ID)
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	row, err := db.GetMiniUserProfile(userID)
 	if err != nil {
-		row = &db.CustomerDO{ID: currentUser.ID, Status: db.CustomerStatusActive}
+		row = &db.CustomerDO{ID: userID, Status: db.CustomerStatusActive}
 	}
 	if req.NickName != "" {
 		row.Nickname = req.NickName
-		currentUser.NickName = req.NickName
 	}
 	if req.AvatarURL != "" {
 		row.Avatar = req.AvatarURL
-		currentUser.AvatarURL = req.AvatarURL
 	}
 	row.Signature = req.Signature
-	if req.Phone != "" {
-		row.Phone = req.Phone
-		currentUser.Phone = req.Phone
-	}
 	if row.Nickname == "" {
 		row.Nickname = currentUser.NickName
 	}
@@ -370,7 +443,11 @@ func ServiceAreas(c *gin.Context) {
 }
 
 func ListAddresses(c *gin.Context) {
-	rows, err := db.ListMiniAddresses(currentUser.ID)
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	rows, err := db.ListMiniAddresses(userID)
 	if err != nil {
 		fail(c, err.Error())
 		return
@@ -379,7 +456,11 @@ func ListAddresses(c *gin.Context) {
 }
 
 func GetAddress(c *gin.Context) {
-	row, err := db.GetMiniAddress(currentUser.ID, c.Param("id"))
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	row, err := db.GetMiniAddress(userID, c.Param("id"))
 	if err != nil {
 		fail(c, "address not found")
 		return
@@ -388,6 +469,10 @@ func GetAddress(c *gin.Context) {
 }
 
 func CreateAddress(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	var req Address
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, "invalid request")
@@ -395,7 +480,7 @@ func CreateAddress(c *gin.Context) {
 	}
 	row := &db.AddressDO{
 		ID:          req.ID,
-		UserID:      currentUser.ID,
+		UserID:      userID,
 		ContactName: req.ContactName,
 		Phone:       req.Phone,
 		District:    req.District,
@@ -408,12 +493,16 @@ func CreateAddress(c *gin.Context) {
 		return
 	}
 	if row.IsDefault {
-		_ = db.SetMiniAddressDefault(currentUser.ID, row.ID)
+		_ = db.SetMiniAddressDefault(userID, row.ID)
 	}
 	ok(c, req)
 }
 
 func UpdateAddress(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	var req Address
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, "invalid request")
@@ -422,7 +511,7 @@ func UpdateAddress(c *gin.Context) {
 	req.ID = c.Param("id")
 	row := &db.AddressDO{
 		ID:          req.ID,
-		UserID:      currentUser.ID,
+		UserID:      userID,
 		ContactName: req.ContactName,
 		Phone:       req.Phone,
 		District:    req.District,
@@ -430,18 +519,22 @@ func UpdateAddress(c *gin.Context) {
 		Tag:         req.Tag,
 		IsDefault:   req.IsDefault,
 	}
-	if err := db.UpdateMiniAddress(currentUser.ID, row); err != nil {
+	if err := db.UpdateMiniAddress(userID, row); err != nil {
 		fail(c, err.Error())
 		return
 	}
 	if row.IsDefault {
-		_ = db.SetMiniAddressDefault(currentUser.ID, row.ID)
+		_ = db.SetMiniAddressDefault(userID, row.ID)
 	}
 	ok(c, req)
 }
 
 func SetDefaultAddress(c *gin.Context) {
-	if err := db.SetMiniAddressDefault(currentUser.ID, c.Param("id")); err != nil {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	if err := db.SetMiniAddressDefault(userID, c.Param("id")); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -449,7 +542,11 @@ func SetDefaultAddress(c *gin.Context) {
 }
 
 func DeleteAddress(c *gin.Context) {
-	if err := db.DeleteMiniAddress(currentUser.ID, c.Param("id")); err != nil {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	if err := db.DeleteMiniAddress(userID, c.Param("id")); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -457,8 +554,12 @@ func DeleteAddress(c *gin.Context) {
 }
 
 func ListServiceTargets(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	category := c.Query("category")
-	rows, err := db.ListMiniServiceTargets(currentUser.ID, category)
+	rows, err := db.ListMiniServiceTargets(userID, category)
 	if err != nil {
 		fail(c, err.Error())
 		return
@@ -467,7 +568,11 @@ func ListServiceTargets(c *gin.Context) {
 }
 
 func GetServiceTarget(c *gin.Context) {
-	row, err := db.GetMiniServiceTarget(currentUser.ID, c.Param("id"))
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	row, err := db.GetMiniServiceTarget(userID, c.Param("id"))
 	if err != nil {
 		fail(c, "service target not found")
 		return
@@ -476,6 +581,10 @@ func GetServiceTarget(c *gin.Context) {
 }
 
 func CreateServiceTarget(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	var req ServiceTarget
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, "invalid request")
@@ -483,7 +592,7 @@ func CreateServiceTarget(c *gin.Context) {
 	}
 	row := &db.ServiceTargetDO{
 		ID:        req.ID,
-		UserID:    currentUser.ID,
+		UserID:    userID,
 		Name:      req.Name,
 		Category:  req.Category,
 		Relation:  req.Relation,
@@ -496,12 +605,16 @@ func CreateServiceTarget(c *gin.Context) {
 		return
 	}
 	if row.IsDefault {
-		_ = db.SetMiniServiceTargetDefault(currentUser.ID, row.ID)
+		_ = db.SetMiniServiceTargetDefault(userID, row.ID)
 	}
 	ok(c, req)
 }
 
 func UpdateServiceTarget(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	var req ServiceTarget
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, "invalid request")
@@ -510,7 +623,7 @@ func UpdateServiceTarget(c *gin.Context) {
 	req.ID = c.Param("id")
 	row := &db.ServiceTargetDO{
 		ID:        req.ID,
-		UserID:    currentUser.ID,
+		UserID:    userID,
 		Name:      req.Name,
 		Category:  req.Category,
 		Relation:  req.Relation,
@@ -518,18 +631,22 @@ func UpdateServiceTarget(c *gin.Context) {
 		Note:      req.Note,
 		IsDefault: req.IsDefault,
 	}
-	if err := db.UpdateMiniServiceTarget(currentUser.ID, row); err != nil {
+	if err := db.UpdateMiniServiceTarget(userID, row); err != nil {
 		fail(c, err.Error())
 		return
 	}
 	if row.IsDefault {
-		_ = db.SetMiniServiceTargetDefault(currentUser.ID, row.ID)
+		_ = db.SetMiniServiceTargetDefault(userID, row.ID)
 	}
 	ok(c, req)
 }
 
 func DeleteServiceTarget(c *gin.Context) {
-	if err := db.DeleteMiniServiceTarget(currentUser.ID, c.Param("id")); err != nil {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	if err := db.DeleteMiniServiceTarget(userID, c.Param("id")); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -537,7 +654,11 @@ func DeleteServiceTarget(c *gin.Context) {
 }
 
 func SetDefaultServiceTarget(c *gin.Context) {
-	if err := db.SetMiniServiceTargetDefault(currentUser.ID, c.Param("id")); err != nil {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	if err := db.SetMiniServiceTargetDefault(userID, c.Param("id")); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -574,7 +695,11 @@ func ListMealPackages(c *gin.Context) {
 }
 
 func ListCustomPackages(c *gin.Context) {
-	rows, err := db.ListMiniMealPackages(currentUser.ID, "custom")
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	rows, err := db.ListMiniMealPackages(userID, "custom")
 	if err != nil {
 		fail(c, err.Error())
 		return
@@ -583,7 +708,11 @@ func ListCustomPackages(c *gin.Context) {
 }
 
 func GetCustomPackage(c *gin.Context) {
-	row, err := db.GetMiniMealPackage(currentUser.ID, c.Param("id"))
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	row, err := db.GetMiniMealPackage(userID, c.Param("id"))
 	if err != nil {
 		fail(c, "meal package not found")
 		return
@@ -592,6 +721,10 @@ func GetCustomPackage(c *gin.Context) {
 }
 
 func CreateCustomPackage(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	var req MealPackage
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, "invalid request")
@@ -599,7 +732,7 @@ func CreateCustomPackage(c *gin.Context) {
 	}
 	row := &db.MealPackageDO{
 		ID:          req.ID,
-		UserID:      currentUser.ID,
+		UserID:      userID,
 		PackageType: "custom",
 		Name:        req.Name,
 		Scene:       req.Scene,
@@ -615,6 +748,10 @@ func CreateCustomPackage(c *gin.Context) {
 }
 
 func UpdateCustomPackage(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	var req MealPackage
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, "invalid request")
@@ -623,14 +760,14 @@ func UpdateCustomPackage(c *gin.Context) {
 	req.ID = c.Param("id")
 	row := &db.MealPackageDO{
 		ID:          req.ID,
-		UserID:      currentUser.ID,
+		UserID:      userID,
 		PackageType: "custom",
 		Name:        req.Name,
 		Scene:       req.Scene,
 		Price:       req.Price,
 		Dishes:      db.MarshalStringSlice(req.Dishes),
 	}
-	if err := db.UpdateMiniMealPackage(currentUser.ID, row); err != nil {
+	if err := db.UpdateMiniMealPackage(userID, row); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -638,7 +775,11 @@ func UpdateCustomPackage(c *gin.Context) {
 }
 
 func DeleteCustomPackage(c *gin.Context) {
-	if err := db.DeleteMiniMealPackage(currentUser.ID, c.Param("id")); err != nil {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	if err := db.DeleteMiniMealPackage(userID, c.Param("id")); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -646,10 +787,14 @@ func DeleteCustomPackage(c *gin.Context) {
 }
 
 func ListOrders(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	status := c.DefaultQuery("status", "all")
 	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1)
 	pageSize := parsePositiveInt(c.DefaultQuery("pageSize", "20"), 20)
-	rows, total, err := db.ListMiniOrders(currentUser.ID, status, page, pageSize)
+	rows, total, err := db.ListMiniOrders(userID, status, page, pageSize)
 	if err != nil {
 		fail(c, err.Error())
 		return
@@ -658,7 +803,11 @@ func ListOrders(c *gin.Context) {
 }
 
 func GetOrder(c *gin.Context) {
-	row, err := db.GetMiniOrder(currentUser.ID, c.Param("id"))
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	row, err := db.GetMiniOrder(userID, c.Param("id"))
 	if err != nil {
 		fail(c, "order not found")
 		return
@@ -667,6 +816,10 @@ func GetOrder(c *gin.Context) {
 }
 
 func CreateOrder(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
 	var req Order
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, "invalid request")
@@ -674,7 +827,7 @@ func CreateOrder(c *gin.Context) {
 	}
 	row := &db.OrderDO{
 		ID:            fmt.Sprintf("YH%s%03d", time.Now().Format("20060102150405"), time.Now().Nanosecond()%1000),
-		UserID:        currentUser.ID,
+		UserID:        userID,
 		Customer:      req.ContactName,
 		Phone:         req.Phone,
 		Service:       req.ServiceName,
@@ -711,7 +864,11 @@ func UpdateOrderStatus(c *gin.Context) {
 }
 
 func DeleteOrder(c *gin.Context) {
-	if err := db.DeleteMiniOrder(currentUser.ID, c.Param("id")); err != nil {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	if err := db.DeleteMiniOrder(userID, c.Param("id")); err != nil {
 		fail(c, err.Error())
 		return
 	}
@@ -719,6 +876,14 @@ func DeleteOrder(c *gin.Context) {
 }
 
 func CancelOrder(c *gin.Context) {
+	userID, authed := requireUserID(c)
+	if !authed {
+		return
+	}
+	if _, err := db.GetMiniOrder(userID, c.Param("id")); err != nil {
+		fail(c, "order not found")
+		return
+	}
 	row, err := db.UpdateOrderStatus(c.Param("id"), db.OrderStatusCancelled, "cancelled")
 	if err != nil {
 		fail(c, err.Error())
@@ -743,6 +908,10 @@ func WechatNotify(c *gin.Context) { ok(c, gin.H{"received": true}) }
 
 func ChatSession(c *gin.Context) {
 	user := bearerUser(c)
+	if user.ID == "" {
+		fail(c, "unauthorized")
+		return
+	}
 	sessionID := c.DefaultQuery("sessionId", "chat_"+user.ID)
 	row, err := chatws.TouchSession(sessionID, user.ID, user.NickName)
 	if err != nil {
@@ -754,6 +923,10 @@ func ChatSession(c *gin.Context) {
 
 func ChatMessages(c *gin.Context) {
 	user := bearerUser(c)
+	if user.ID == "" {
+		fail(c, "unauthorized")
+		return
+	}
 	sessionID := c.DefaultQuery("sessionId", "chat_"+user.ID)
 	rows, err := db.ListChatMessages(sessionID)
 	if err != nil {
@@ -774,6 +947,10 @@ func CreateChatMessage(c *gin.Context) {
 		return
 	}
 	user := bearerUser(c)
+	if user.ID == "" {
+		fail(c, "unauthorized")
+		return
+	}
 	row, err := chatws.CreateMiniMessage(req.SessionID, user.ID, user.NickName, req.MsgType, req.Content)
 	if err != nil {
 		fail(c, err.Error())
@@ -816,26 +993,43 @@ func storeFromDO(row db.ShopDO) Store {
 	}
 }
 
-func ensureMiniUser(nickName, avatarURL, phone string) error {
-	row, err := db.GetMiniUserProfile(currentUser.ID)
+func ensureMiniUser(openID, nickName, avatarURL, phone string) (*db.CustomerDO, error) {
+	if strings.TrimSpace(phone) == "" {
+		return nil, fmt.Errorf("phone required")
+	}
+	row, err := db.GetMiniUserByPhone(phone)
 	if err != nil {
-		row = &db.CustomerDO{ID: currentUser.ID, Status: db.CustomerStatusActive, CreatedAt: time.Now()}
+		row = &db.CustomerDO{
+			ID:        newMiniUserID(),
+			Phone:     phone,
+			Nickname:  "微信用户",
+			Status:    db.CustomerStatusActive,
+			CreatedAt: time.Now(),
+		}
+	}
+	if row.OpenID != "" && openID != "" && row.OpenID != openID {
+		return nil, fmt.Errorf("phone already bound to another wechat account")
+	}
+	if row.OpenID == "" && openID != "" {
+		row.OpenID = openID
 	}
 	if nickName != "" {
 		row.Nickname = nickName
 	}
 	if row.Nickname == "" {
-		row.Nickname = currentUser.NickName
+		row.Nickname = "微信用户"
 	}
 	if avatarURL != "" {
 		row.Avatar = avatarURL
 	}
-	if phone != "" {
-		row.Phone = phone
-	}
+	row.Phone = phone
 	row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
 	row.UpdatedAt = time.Now()
-	return db.UpsertMiniUserProfile(row)
+	return row, db.UpsertMiniUserProfile(row)
+}
+
+func newMiniUserID() string {
+	return "U" + time.Now().Format("20060102150405") + fmt.Sprintf("%03d", time.Now().Nanosecond()%1000)
 }
 
 func userFromDO(row db.CustomerDO) User {

@@ -15,12 +15,13 @@ const (
 var Conf = new(AppConfig)
 
 type AppConfig struct {
-	Name    string          `json:"name"`
-	Mode    string          `json:"mode"`
-	Server  *ServerConfig   `json:"server"`
-	Session *SessionConfig  `json:"session"`
-	Log     *LogConfig      `json:"log"`
-	DB      *DatabaseConfig `json:"database"`
+	Name       string            `json:"name"`
+	Mode       string            `json:"mode"`
+	Server     *ServerConfig     `json:"server"`
+	Session    *SessionConfig    `json:"session"`
+	Log        *LogConfig        `json:"log"`
+	DB         *DatabaseConfig   `json:"database"`
+	MiniWechat *MiniWechatConfig `json:"mini_wechat"`
 }
 
 type ServerConfig struct {
@@ -41,6 +42,11 @@ type DatabaseConfig struct {
 	Driver      string `json:"driver"`
 	DSN         string `json:"dsn"`
 	AutoMigrate bool   `json:"auto_migrate"`
+}
+
+type MiniWechatConfig struct {
+	AppID     string `json:"app_id"`
+	AppSecret string `json:"app_secret"`
 }
 
 func Init() error {
@@ -68,6 +74,11 @@ func Init() error {
 		Driver:      getEnv("MIS_DB_DRIVER", "mysql"),
 		DSN:         getEnv("MIS_DB_DSN", ""),
 		AutoMigrate: getEnvAsBool("MIS_DB_AUTO_MIGRATE", false),
+	}
+
+	Conf.MiniWechat = &MiniWechatConfig{
+		AppID:     getEnv("MIS_MINI_WECHAT_APPID", ""),
+		AppSecret: getEnv("MIS_MINI_WECHAT_SECRET", ""),
 	}
 
 	log.Printf("应用名称: %s", Conf.Name)
