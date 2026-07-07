@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"strings"
 	"yonghemolimis/src/dao/db"
 	"yonghemolimis/src/logger"
 	"yonghemolimis/src/middlewares"
@@ -48,12 +49,16 @@ func main() {
 	} else {
 		r.NoRoute(func(c *gin.Context) {
 			path := c.Request.URL.Path
-			f, e := fs.Stat(distFS, path[1:])
+			rel := strings.TrimPrefix(path, "/")
+			if rel == "" {
+				rel = "index.html"
+			}
+			f, e := fs.Stat(distFS, rel)
 			if e == nil && !f.IsDir() {
-				c.FileFromFS(path, http.FS(distFS))
+				c.FileFromFS(rel, http.FS(distFS))
 				return
 			}
-			c.FileFromFS("/", http.FS(distFS))
+			c.FileFromFS("index.html", http.FS(distFS))
 		})
 	}
 
