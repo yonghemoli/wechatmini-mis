@@ -6,15 +6,6 @@ ARG NODE_IMAGE=node:22-alpine
 ARG GO_IMAGE=golang:1.24-alpine
 ARG ALPINE_IMAGE=alpine:3.20
 
-# ===== 阶段1: 前端构建 =====
-FROM ${NODE_IMAGE} AS frontend
-WORKDIR /app/frontend
-COPY frontend/package.json frontend/yarn.lock ./
-RUN corepack enable \
-    && yarn install --frozen-lockfile --ignore-engines --registry=https://registry.npmmirror.com
-COPY frontend/ ./
-RUN yarn build
-
 # ===== 阶段2: 后端构建 =====
 FROM ${GO_IMAGE} AS builder
 ARG ALPINE_MIRROR
@@ -43,8 +34,6 @@ RUN --mount=type=secret,id=github_token,required=false \
     fi
 COPY src ./src
 COPY main.go ./
-# 从前端阶段拷贝构建产物
-COPY --from=frontend /app/dist ./dist
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION=0.0.1
