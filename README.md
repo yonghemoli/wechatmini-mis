@@ -8,6 +8,7 @@
 - 前端入口：管理端统一挂载在 `/admin`。
 - 本次升级：前端入口、导航和核心页面已收敛为永和茉莉。
 - 当前页面：工作台、订单管理、用户管理、服务类型管理、服务管理、账户管理、店铺管理、常见问题管理、客服在线。
+- 护理小程序业务：护理服务分类、服务人员、客户需求、求职简历和运营内容均已提供 MIS 接口。
 - 数据状态：管理端页面已对接 `/api/v1` 真实接口；开发初始化数据通过 `sql/init-seed.sql` 手动写入。
 
 ## 永和茉莉 模块边界
@@ -49,6 +50,12 @@
    - 独立全屏聊天页。
    - 支持会话列表、消息查看、文本回复、标记已读和关闭会话。
 
+10. 护理小程序运营
+   - `/api/v1/care-service-categories`：稳定服务分类管理。
+   - `/api/v1/caregivers`：服务人员档案、发布、推荐和排序。
+   - `/api/v1/demands`、`/api/v1/resumes`：咨询需求与求职简历跟进、顾问分配和状态历史。
+   - `/api/v1/mini-content/:key`：首页配置、公司介绍和协议内容；`key` 支持 `app-config`、`about`、`agreement-privacy`、`agreement-service`。
+
 后台入口为 `/admin`，管理端接口为 `/api/v1`，小程序接口为 `/api/mini`。小程序完整接口文档见 [docs/mini-api.md](docs/mini-api.md)。
 
 ## 初始化数据
@@ -71,6 +78,15 @@ make db-init
 ```
 
 `sql/init-schema.sql` 可以重复执行：新库会创建完整表结构；旧库会按 `information_schema` 判断并补齐新增字段和索引，例如 `users.phone`、`users.signature`、`users.last_login_at`、`orders.user_id`、`orders.mini_deleted` 和 `idx_orders_user_id`。
+
+护理小程序短信验证码通过通用 HTTP JSON 网关发送，生产环境需要配置：
+
+```text
+MIS_MINI_SMS_ENDPOINT=https://sms-gateway.example.com/send
+MIS_MINI_SMS_TOKEN=your-token
+```
+
+网关收到的 JSON 为 `{"phone":"13800138000","code":"123456","scene":"LOGIN"}`。仅在非 `release` 环境可用 `MIS_MINI_SMS_TEST_CODE=123456` 跳过外部网关进行本地联调；生产环境不会启用固定验证码。
 
 默认管理员账号：
 

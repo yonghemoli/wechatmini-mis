@@ -161,13 +161,24 @@ func RegisterRoutes(r gin.IRouter) {
 	r.POST("/auth/wechat-login", WechatLogin)
 	r.POST("/auth/phone-code", PhoneCode)
 	r.POST("/auth/phone-login", PhoneLogin)
+	r.GET("/users/me", BusinessUserMe)
+	r.GET("/app-config", BusinessAppConfig)
+	r.GET("/agreements/:type", BusinessAgreement)
+	r.GET("/about", BusinessAbout)
+	r.GET("/caregivers", ListBusinessCaregivers)
+	r.GET("/caregivers/:id", GetBusinessCaregiver)
+	r.POST("/demands", CreateBusinessDemand)
+	r.POST("/resumes", CreateBusinessResume)
 	r.GET("/user/profile", UserProfile)
 	r.PUT("/user/profile", UpdateUserProfile)
 	r.GET("/appointment/home", AppointmentHome)
 	r.GET("/stores/nearest", NearestStore)
 	r.GET("/service-categories", ListServiceCategories)
 	r.GET("/service-categories/:id/services", ListServicesByCategoryID)
-	r.GET("/services", ListServices)
+	// 新版小程序将 /services 定义为稳定服务分类。历史服务项目查询保留在
+	// /legacy-services，避免路由语义冲突。
+	r.GET("/services", ListBusinessServices)
+	r.GET("/legacy-services", ListServices)
 	r.GET("/services/search", SearchServices)
 	r.GET("/services/:id", GetService)
 	r.GET("/service-areas", ServiceAreas)
@@ -251,96 +262,73 @@ func WechatLogin(c *gin.Context) {
 		AvatarURL     string `json:"avatarUrl"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, "invalid request")
+		businessFail(c, http.StatusBadRequest, 40000, "请求参数错误")
 		return
 	}
 	if strings.TrimSpace(req.Code) == "" {
-		fail(c, "code required")
+		businessFail(c, http.StatusBadRequest, 40000, "微信登录凭证不能为空")
 		return
 	}
 	wxSession, err := wxCodeToSession(req.Code)
 	if err != nil {
-		fail(c, err.Error())
+		businessFail(c, http.StatusBadRequest, 40002, "微信登录凭证错误或已失效")
 		return
 	}
 	if row, err := db.GetMiniUserByOpenID(wxSession.OpenID); err == nil && strings.TrimSpace(row.Phone) != "" {
+		if row.Status != db.CustomerStatusActive {
+			businessFail(c, http.StatusForbidden, 40300, "账号已被禁用")
+			return
+		}
 		row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
 		row.UpdatedAt = time.Now()
 		if err := db.UpsertMiniUserProfile(row); err != nil {
-			fail(c, err.Error())
+			businessFail(c, http.StatusInternalServerError, 50000, "登录失败")
 			return
 		}
-		ok(c, gin.H{"token": createMiniToken(row.ID), "user": userFromDO(*row), "isBoundPhone": true})
+		user := userFromDO(*row)
+		user.Phone = maskPhone(row.Phone)
+		businessOK(c, http.StatusOK, gin.H{"token": createMiniToken(row.ID), "expiresIn": 30 * 24 * 60 * 60, "user": user, "isBoundPhone": true})
 		return
 	}
 	if strings.TrimSpace(req.PhoneCode) == "" {
-		fail(c, "phoneCode required")
+		businessFail(c, http.StatusBadRequest, 40000, "phoneCode 不能为空")
 		return
 	}
 	phone, err := wxPhoneNumber(req.PhoneCode)
 	if err != nil {
-		fail(c, err.Error())
+		businessFail(c, http.StatusBadRequest, 40002, "微信手机号授权错误或已失效")
 		return
 	}
 	if strings.TrimSpace(phone) == "" {
-		fail(c, "phone required")
+		businessFail(c, http.StatusBadRequest, 40001, "手机号格式不正确")
+		return
+	}
+	if !mainlandPhonePattern.MatchString(phone) {
+		businessFail(c, http.StatusBadRequest, 40001, "手机号格式不正确")
 		return
 	}
 	row, err := ensureMiniUser(wxSession.OpenID, req.NickName, req.AvatarURL, phone)
 	if err != nil {
-		fail(c, err.Error())
+		businessFail(c, http.StatusConflict, 40900, "该手机号或微信账号已绑定其他用户")
 		return
 	}
 	token := createMiniToken(row.ID)
-	ok(c, gin.H{
+	user := userFromDO(*row)
+	user.Phone = maskPhone(row.Phone)
+	businessOK(c, http.StatusOK, gin.H{
 		"token":        token,
-		"user":         userFromDO(*row),
+		"expiresIn":    30 * 24 * 60 * 60,
+		"user":         user,
 		"isBoundPhone": true,
 	})
 }
 
 func PhoneCode(c *gin.Context) {
-	var req struct {
-		Phone string `json:"phone"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Phone) == "" {
-		fail(c, "phone required")
-		return
-	}
-	ok(c, gin.H{"success": true})
+	phoneCode(c)
 }
 
 func PhoneLogin(c *gin.Context) {
-	var req struct {
-		Phone string `json:"phone"`
-		Code  string `json:"code"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, "invalid request")
-		return
-	}
-	if strings.TrimSpace(req.Phone) == "" || strings.TrimSpace(req.Code) == "" {
-		fail(c, "phone and code required")
-		return
-	}
-	row, err := db.GetMiniUserByPhone(req.Phone)
-	if err != nil {
-		row = &db.CustomerDO{
-			ID:        newMiniUserID(),
-			Phone:     req.Phone,
-			Nickname:  "微信用户",
-			Status:    db.CustomerStatusActive,
-			CreatedAt: time.Now(),
-		}
-	}
-	row.Phone = req.Phone
-	row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
-	row.UpdatedAt = time.Now()
-	if err := db.UpsertMiniUserProfile(row); err != nil {
-		fail(c, err.Error())
-		return
-	}
-	ok(c, gin.H{"token": createMiniToken(row.ID), "user": userFromDO(*row), "isBoundPhone": true})
+	phoneLogin(c)
 }
 
 func UserProfile(c *gin.Context) {

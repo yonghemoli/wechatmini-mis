@@ -20,6 +20,11 @@ func AutoMigrate() error {
 		&FAQDO{},
 		&ChatSessionDO{},
 		&ChatMessageDO{},
+		&MiniServiceCategoryDO{},
+		&CaregiverDO{},
+		&DemandDO{},
+		&ResumeDO{},
+		&BusinessStatusHistoryDO{},
 	)
 	if err != nil {
 		return err

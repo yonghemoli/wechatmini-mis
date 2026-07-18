@@ -1,5 +1,9 @@
 # 永和茉莉小程序接口文档
 
+> 本文档保留历史预约、订单、地址和配菜接口说明。护理小程序 v1.0 的当前规范以
+> [API_REQUIREMENTS.md](API_REQUIREMENTS.md) 为准；其中 `GET /services` 已升级为护理服务分类接口，
+> 历史“具体服务项目”列表迁移到 `GET /legacy-services`。
+
 ## 基础信息
 
 - Base URL：`https://yonghemoli.com/api/mini/`

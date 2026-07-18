@@ -22,6 +22,7 @@ type AppConfig struct {
 	Log        *LogConfig        `json:"log"`
 	DB         *DatabaseConfig   `json:"database"`
 	MiniWechat *MiniWechatConfig `json:"mini_wechat"`
+	MiniSMS    *MiniSMSConfig    `json:"mini_sms"`
 }
 
 type ServerConfig struct {
@@ -47,6 +48,14 @@ type DatabaseConfig struct {
 type MiniWechatConfig struct {
 	AppID     string `json:"app_id"`
 	AppSecret string `json:"app_secret"`
+}
+
+// MiniSMSConfig 使用通用 HTTP JSON 网关发送验证码。网关接收
+// {"phone":"...","code":"...","scene":"LOGIN"}。
+type MiniSMSConfig struct {
+	Endpoint string `json:"endpoint"`
+	Token    string `json:"token"`
+	TestCode string `json:"test_code"`
 }
 
 func Init() error {
@@ -79,6 +88,11 @@ func Init() error {
 	Conf.MiniWechat = &MiniWechatConfig{
 		AppID:     getEnv("MIS_MINI_WECHAT_APPID", ""),
 		AppSecret: getEnv("MIS_MINI_WECHAT_SECRET", ""),
+	}
+	Conf.MiniSMS = &MiniSMSConfig{
+		Endpoint: getEnv("MIS_MINI_SMS_ENDPOINT", ""),
+		Token:    getEnv("MIS_MINI_SMS_TOKEN", ""),
+		TestCode: getEnv("MIS_MINI_SMS_TEST_CODE", ""),
 	}
 
 	log.Printf("应用名称: %s", Conf.Name)

@@ -222,6 +222,123 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     KEY idx_chat_messages_session_id (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS mini_service_categories (
+    id VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    subtitle VARCHAR(128) NOT NULL DEFAULT '',
+    description TEXT NOT NULL,
+    icon_url VARCHAR(512) NOT NULL DEFAULT '',
+    tags TEXT NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    sort INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_mini_service_categories_enabled (enabled),
+    KEY idx_mini_service_categories_sort (sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS caregivers (
+    id VARCHAR(40) NOT NULL,
+    avatar_url VARCHAR(512) NOT NULL DEFAULT '',
+    name VARCHAR(64) NOT NULL,
+    age INT NOT NULL,
+    experience_years INT NOT NULL DEFAULT 0,
+    origin VARCHAR(128) NOT NULL DEFAULT '',
+    service_ids TEXT NOT NULL,
+    jobs TEXT NOT NULL,
+    availability_status VARCHAR(32) NOT NULL,
+    rating DECIMAL(2,1) NOT NULL DEFAULT 0,
+    service_count INT NOT NULL DEFAULT 0,
+    recommended BOOLEAN NOT NULL DEFAULT FALSE,
+    introduction TEXT NOT NULL,
+    education VARCHAR(64) NOT NULL DEFAULT '',
+    ethnicity VARCHAR(64) NOT NULL DEFAULT '',
+    zodiac VARCHAR(32) NOT NULL DEFAULT '',
+    skills TEXT NOT NULL,
+    certificates TEXT NOT NULL,
+    identity_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    physical_exam_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    medical_report_image_urls TEXT NOT NULL,
+    personal_info TEXT NOT NULL,
+    work_history TEXT NOT NULL,
+    photo_urls TEXT NOT NULL,
+    published BOOLEAN NOT NULL DEFAULT FALSE,
+    sort INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_caregivers_name (name),
+    KEY idx_caregivers_origin (origin),
+    KEY idx_caregivers_availability (availability_status),
+    KEY idx_caregivers_recommended (recommended),
+    KEY idx_caregivers_published (published),
+    KEY idx_caregivers_sort (sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS demands (
+    id VARCHAR(32) NOT NULL,
+    user_id VARCHAR(40) DEFAULT NULL,
+    service_id VARCHAR(32) NOT NULL,
+    service_name VARCHAR(64) NOT NULL,
+    caregiver_id VARCHAR(40) DEFAULT NULL,
+    caregiver_name VARCHAR(64) NOT NULL DEFAULT '',
+    contact_phone VARCHAR(32) NOT NULL,
+    requirements TEXT NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING_CONTACT',
+    assigned_admin_id BIGINT UNSIGNED DEFAULT NULL,
+    idempotency_key VARCHAR(128) DEFAULT NULL,
+    submission_scope VARCHAR(128) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_demands_user_id (user_id),
+    KEY idx_demands_service_id (service_id),
+    KEY idx_demands_caregiver_id (caregiver_id),
+    KEY idx_demands_phone (contact_phone),
+    KEY idx_demands_status (status),
+    KEY idx_demands_source (source),
+    KEY idx_demands_idempotency (submission_scope, idempotency_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS resumes (
+    id VARCHAR(32) NOT NULL,
+    user_id VARCHAR(40) DEFAULT NULL,
+    intention_service_id VARCHAR(32) NOT NULL,
+    service_name VARCHAR(64) NOT NULL,
+    work_status VARCHAR(32) NOT NULL,
+    experience_range VARCHAR(32) NOT NULL,
+    entry_year INT NOT NULL,
+    contact_phone VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING_CONTACT',
+    assigned_admin_id BIGINT UNSIGNED DEFAULT NULL,
+    idempotency_key VARCHAR(128) DEFAULT NULL,
+    submission_scope VARCHAR(128) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_resumes_user_id (user_id),
+    KEY idx_resumes_service_id (intention_service_id),
+    KEY idx_resumes_phone (contact_phone),
+    KEY idx_resumes_status (status),
+    KEY idx_resumes_idempotency (submission_scope, idempotency_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS business_status_histories (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    entity_type VARCHAR(32) NOT NULL,
+    entity_id VARCHAR(32) NOT NULL,
+    from_status VARCHAR(32) NOT NULL,
+    to_status VARCHAR(32) NOT NULL,
+    operator_id BIGINT UNSIGNED DEFAULT NULL,
+    note TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_business_history_entity (entity_type, entity_id),
+    KEY idx_business_history_operator (operator_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Idempotent legacy-table upgrades.
 -- CREATE TABLE IF NOT EXISTS does not add columns to existing tables, so keep
 -- these guards in sync with new fields added to the CREATE TABLE definitions.
