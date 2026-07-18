@@ -10,5 +10,6 @@
         "ulimits",
         "yonghemoli",
         "yonghemolimis"
-    ]
+    ],
+    "commentTranslate.hover.enabled": false
 }

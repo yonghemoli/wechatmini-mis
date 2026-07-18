@@ -19,35 +19,13 @@ type AdminDO struct {
 
 func (AdminDO) TableName() string { return "admins" }
 
-type OrderDO struct {
-	ID            string    `gorm:"size:32;primaryKey" json:"id"`
-	UserID        string    `gorm:"size:40;index;column:user_id" json:"userId"`
-	Customer      string    `gorm:"size:64;not null" json:"customer"`
-	Phone         string    `gorm:"size:32;not null" json:"phone"`
-	Service       string    `gorm:"size:128;not null" json:"service"`
-	Amount        int       `gorm:"not null;default:0" json:"amount"`
-	Status        string    `gorm:"size:32;index;not null" json:"status"`
-	Source        string    `gorm:"size:32;index;not null" json:"source"`
-	AppointmentAt string    `gorm:"size:32;index;column:appointment_at" json:"appointmentAt"`
-	Staff         string    `gorm:"size:64;not null;default:''" json:"staff"`
-	InternalNote  string    `gorm:"type:text;column:internal_note" json:"internalNote"`
-	CloseReason   string    `gorm:"type:text;column:close_reason" json:"closeReason"`
-	MiniDeleted   bool      `gorm:"not null;default:false;column:mini_deleted" json:"miniDeleted"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
-}
-
-func (OrderDO) TableName() string { return "orders" }
-
 type CustomerDO struct {
 	ID          string    `gorm:"size:32;primaryKey" json:"id"`
 	OpenID      string    `gorm:"size:128;uniqueIndex;column:openid" json:"openid"`
-	Avatar      string    `gorm:"size:255;not null;default:''" json:"avatar"`
+	Avatar      string    `gorm:"size:512;not null;default:''" json:"avatar"`
 	Nickname    string    `gorm:"size:64;not null" json:"nickname"`
 	Phone       string    `gorm:"size:32;uniqueIndex;not null" json:"phone"`
 	Signature   string    `gorm:"size:255;not null;default:''" json:"signature"`
-	TotalSpent  int       `gorm:"not null;default:0;column:total_spent" json:"totalSpent"`
-	LastOrderAt string    `gorm:"size:32;column:last_order_at" json:"lastOrderAt"`
 	LastLoginAt string    `gorm:"size:32;column:last_login_at" json:"lastLoginAt"`
 	Status      string    `gorm:"size:32;index;not null;default:'active'" json:"status"`
 	CreatedAt   time.Time `json:"createdAt"`
@@ -55,121 +33,6 @@ type CustomerDO struct {
 }
 
 func (CustomerDO) TableName() string { return "users" }
-
-type ServiceTypeDO struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	Name        string    `gorm:"size:64;not null" json:"name"`
-	Description string    `gorm:"type:text" json:"description"`
-	SortOrder   int       `gorm:"not null;default:0;column:sort_order" json:"sortOrder"`
-	Status      string    `gorm:"size:20;not null;default:'active'" json:"status"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-}
-
-func (ServiceTypeDO) TableName() string { return "service_types" }
-
-type ServiceDO struct {
-	ID                 uint      `gorm:"primaryKey" json:"id"`
-	TypeID             uint      `gorm:"index;not null;column:type_id" json:"typeId"`
-	TypeName           string    `gorm:"-" json:"typeName"`
-	Name               string    `gorm:"size:128;not null" json:"name"`
-	Image              string    `gorm:"size:255;not null;default:''" json:"image"`
-	Price              int       `gorm:"not null;default:0" json:"price"`
-	Unit               string    `gorm:"size:32;not null;default:'小时'" json:"unit"`
-	Title              string    `gorm:"size:128;not null;default:''" json:"title"`
-	Scene              string    `gorm:"size:255;not null;default:''" json:"scene"`
-	Summary            string    `gorm:"type:text" json:"summary"`
-	PriceText          string    `gorm:"size:64;not null;default:'';column:price_text" json:"priceText"`
-	DurationText       string    `gorm:"size:64;not null;default:'';column:duration_text" json:"durationText"`
-	RequirementLabel   string    `gorm:"size:64;not null;default:'';column:requirement_label" json:"requirementLabel"`
-	RequirementOptions string    `gorm:"type:text;not null;column:requirement_options" json:"requirementOptions"`
-	SuitableFor        string    `gorm:"type:text;not null;column:suitable_for" json:"suitableFor"`
-	Scope              string    `gorm:"type:text;not null" json:"scope"`
-	Process            string    `gorm:"type:text;not null" json:"process"`
-	Notes              string    `gorm:"type:text;not null" json:"notes"`
-	Description        string    `gorm:"type:text" json:"description"`
-	Visible            bool      `gorm:"not null;default:true;index" json:"visible"`
-	SortOrder          int       `gorm:"not null;default:0;column:sort_order" json:"sortOrder"`
-	CreatedAt          time.Time `json:"createdAt"`
-	UpdatedAt          time.Time `json:"updatedAt"`
-}
-
-func (ServiceDO) TableName() string { return "services" }
-
-type ShopDO struct {
-	ID            uint      `gorm:"primaryKey" json:"id"`
-	Name          string    `gorm:"size:128;not null" json:"name"`
-	ContactName   string    `gorm:"size:64;column:contact_name" json:"contactName"`
-	Phone         string    `gorm:"size:32" json:"phone"`
-	Address       string    `gorm:"size:255" json:"address"`
-	BusinessHours string    `gorm:"size:128;column:business_hours" json:"businessHours"`
-	Status        string    `gorm:"size:20;not null;default:'open'" json:"status"`
-	Remark        string    `gorm:"type:text" json:"remark"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
-}
-
-func (ShopDO) TableName() string { return "shops" }
-
-type AddressDO struct {
-	ID          string    `gorm:"size:32;primaryKey" json:"id"`
-	UserID      string    `gorm:"size:40;index;column:user_id" json:"userId"`
-	ContactName string    `gorm:"size:64;not null;column:contact_name" json:"contactName"`
-	Phone       string    `gorm:"size:32;not null" json:"phone"`
-	District    string    `gorm:"size:128;not null" json:"district"`
-	Detail      string    `gorm:"size:255;not null" json:"detail"`
-	Tag         string    `gorm:"size:32;not null;default:''" json:"tag"`
-	IsDefault   bool      `gorm:"not null;default:false;column:is_default" json:"isDefault"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-}
-
-func (AddressDO) TableName() string { return "addresses" }
-
-type ServiceTargetDO struct {
-	ID        string    `gorm:"size:32;primaryKey" json:"id"`
-	UserID    string    `gorm:"size:40;index;column:user_id" json:"userId"`
-	Name      string    `gorm:"size:64;not null" json:"name"`
-	Category  string    `gorm:"size:32;index;not null" json:"category"`
-	Relation  string    `gorm:"size:32;not null" json:"relation"`
-	Age       string    `gorm:"size:32;not null" json:"age"`
-	Note      string    `gorm:"size:255;not null;default:''" json:"note"`
-	IsDefault bool      `gorm:"not null;default:false;column:is_default" json:"isDefault"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-}
-
-func (ServiceTargetDO) TableName() string { return "service_targets" }
-
-type DishDO struct {
-	ID          string    `gorm:"size:64;primaryKey" json:"id"`
-	Name        string    `gorm:"size:128;not null;uniqueIndex" json:"name"`
-	Scene       string    `gorm:"size:255;not null" json:"scene"`
-	Tag         string    `gorm:"size:32;not null;default:''" json:"tag"`
-	Price       int       `gorm:"not null;default:0" json:"price"`
-	Ingredients string    `gorm:"type:text;not null" json:"ingredients"`
-	VideoTitle  string    `gorm:"size:255;not null;default:'';column:video_title" json:"videoTitle"`
-	VideoURL    string    `gorm:"size:255;not null;default:'';column:video_url" json:"videoUrl"`
-	Comments    string    `gorm:"type:text;not null" json:"comments"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-}
-
-func (DishDO) TableName() string { return "dishes" }
-
-type MealPackageDO struct {
-	ID          string    `gorm:"size:64;primaryKey" json:"id"`
-	UserID      string    `gorm:"size:40;index;column:user_id" json:"userId"`
-	PackageType string    `gorm:"size:20;index;not null;default:'official';column:package_type" json:"packageType"`
-	Name        string    `gorm:"size:128;not null" json:"name"`
-	Scene       string    `gorm:"size:255;not null" json:"scene"`
-	Price       int       `gorm:"not null;default:0" json:"price"`
-	Dishes      string    `gorm:"type:text;not null" json:"dishes"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-}
-
-func (MealPackageDO) TableName() string { return "meal_packages" }
 
 type AppConfigDO struct {
 	Key       string    `gorm:"size:128;primaryKey" json:"key"`
@@ -241,6 +104,7 @@ func (MiniServiceCategoryDO) TableName() string { return "mini_service_categorie
 // 对外响应会在 API 层解码，数据库原始字段不会直接暴露给小程序。
 type CaregiverDO struct {
 	ID                     string    `gorm:"size:40;primaryKey" json:"id"`
+	ApplicationID          string    `gorm:"size:32;index;column:application_id" json:"applicationId"`
 	AvatarURL              string    `gorm:"size:512;not null;default:'';column:avatar_url" json:"avatarUrl"`
 	Name                   string    `gorm:"size:64;not null;index" json:"name"`
 	Age                    int       `gorm:"not null" json:"age"`
@@ -264,7 +128,8 @@ type CaregiverDO struct {
 	PersonalInfo           string    `gorm:"type:text;not null;column:personal_info" json:"-"`
 	WorkHistory            string    `gorm:"type:text;not null;column:work_history" json:"-"`
 	PhotoURLs              string    `gorm:"type:text;not null;column:photo_urls" json:"-"`
-	Published              bool      `gorm:"not null;default:false;index" json:"published"`
+	Status                 string    `gorm:"size:20;not null;default:'DRAFT';index" json:"status"`
+	Source                 string    `gorm:"size:20;not null;default:'ADMIN';index" json:"source"`
 	Sort                   int       `gorm:"not null;default:0;index" json:"sort"`
 	CreatedAt              time.Time `json:"createdAt"`
 	UpdatedAt              time.Time `json:"updatedAt"`

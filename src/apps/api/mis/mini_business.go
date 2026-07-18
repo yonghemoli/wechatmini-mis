@@ -73,16 +73,12 @@ func categoryAdminView(row db.MiniServiceCategoryDO) gin.H {
 
 func ListCaregivers(c *gin.Context) {
 	page, size := misPage(c)
-	var published *bool
-	if raw, exists := c.GetQuery("published"); exists {
-		value, err := strconv.ParseBool(raw)
-		if err != nil {
-			response.Error(c, 400, "published 参数错误")
-			return
-		}
-		published = &value
+	status := strings.ToUpper(strings.TrimSpace(c.Query("status")))
+	if status != "" && status != "DRAFT" && status != "COMPLETED" {
+		response.Error(c, 400, "status 仅支持 DRAFT 或 COMPLETED")
+		return
 	}
-	rows, total, err := db.ListCaregivers(db.CaregiverListQuery{ServiceID: c.Query("serviceId"), Keyword: c.Query("keyword"), AvailabilityStatus: c.Query("availabilityStatus"), Published: published, Page: page, PageSize: size})
+	rows, total, err := db.ListCaregivers(db.CaregiverListQuery{ServiceID: c.Query("serviceId"), Keyword: c.Query("keyword"), AvailabilityStatus: c.Query("availabilityStatus"), Status: status, Page: page, PageSize: size})
 	if err != nil {
 		response.Error(c, 500, "查询服务人员失败")
 		return
@@ -129,7 +125,8 @@ func SaveCaregiver(c *gin.Context) {
 		PersonalInfo           interface{} `json:"personalInfo"`
 		WorkHistory            interface{} `json:"workHistory"`
 		PhotoURLs              []string    `json:"photoUrls"`
-		Published              bool        `json:"published"`
+		Status                 string      `json:"status"`
+		Source                 string      `json:"source"`
 		Sort                   int         `json:"sort"`
 	}
 	if c.ShouldBindJSON(&req) != nil {
@@ -139,8 +136,8 @@ func SaveCaregiver(c *gin.Context) {
 	if id := strings.TrimSpace(c.Param("id")); id != "" {
 		req.ID = id
 	}
-	if strings.TrimSpace(req.Name) == "" || req.Age < 18 || req.Age > 70 || req.Rating < 0 || req.Rating > 5 {
-		response.Error(c, 400, "姓名、年龄或评分不符合要求")
+	if req.Rating < 0 || req.Rating > 5 || req.Age < 0 || req.Age > 70 {
+		response.Error(c, 400, "年龄或评分不符合要求")
 		return
 	}
 	for _, serviceID := range req.ServiceIDs {
@@ -149,11 +146,40 @@ func SaveCaregiver(c *gin.Context) {
 			return
 		}
 	}
-	row := &db.CaregiverDO{ID: req.ID, AvatarURL: req.AvatarURL, Name: strings.TrimSpace(req.Name), Age: req.Age, ExperienceYears: req.ExperienceYears, Origin: req.Origin,
+	status := strings.ToUpper(strings.TrimSpace(req.Status))
+	if status == "" {
+		status = "DRAFT"
+	}
+	if status != "DRAFT" && status != "COMPLETED" {
+		response.Error(c, 400, "status 仅支持 DRAFT 或 COMPLETED")
+		return
+	}
+	if status == "COMPLETED" && (strings.TrimSpace(req.Name) == "" || req.Age < 18 || len(req.ServiceIDs) == 0) {
+		response.Error(c, 400, "完成状态必须填写姓名、有效年龄和至少一个服务项目")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		req.Name = "待完善资料"
+	}
+	source := strings.ToUpper(strings.TrimSpace(req.Source))
+	if source == "" {
+		source = "ADMIN"
+	}
+	if source != "ADMIN" && source != "SELF_SUBMITTED" {
+		response.Error(c, 400, "source 仅支持 ADMIN 或 SELF_SUBMITTED")
+		return
+	}
+	applicationID := ""
+	if req.ID != "" {
+		if existing, err := db.GetCaregiver(req.ID, false); err == nil {
+			applicationID = existing.ApplicationID
+		}
+	}
+	row := &db.CaregiverDO{ID: req.ID, ApplicationID: applicationID, AvatarURL: req.AvatarURL, Name: strings.TrimSpace(req.Name), Age: req.Age, ExperienceYears: req.ExperienceYears, Origin: req.Origin,
 		ServiceIDs: db.MarshalStringSlice(req.ServiceIDs), Jobs: db.MarshalStringSlice(req.Jobs), AvailabilityStatus: req.AvailabilityStatus, Rating: req.Rating, ServiceCount: req.ServiceCount, Recommended: req.Recommended,
 		Introduction: req.Introduction, Education: req.Education, Ethnicity: req.Ethnicity, Zodiac: req.Zodiac, Skills: db.MarshalStringSlice(req.Skills), Certificates: mustJSON(req.Certificates, "[]"),
 		IdentityVerified: req.IdentityVerified, PhysicalExamVerified: req.PhysicalExamVerified, MedicalReportImageURLs: db.MarshalStringSlice(req.MedicalReportImageURLs), PersonalInfo: mustJSON(req.PersonalInfo, "{}"),
-		WorkHistory: mustJSON(req.WorkHistory, "[]"), PhotoURLs: db.MarshalStringSlice(req.PhotoURLs), Published: req.Published, Sort: req.Sort}
+		WorkHistory: mustJSON(req.WorkHistory, "[]"), PhotoURLs: db.MarshalStringSlice(req.PhotoURLs), Status: status, Source: source, Sort: req.Sort}
 	if !row.PhysicalExamVerified {
 		row.MedicalReportImageURLs = "[]"
 	}
@@ -173,7 +199,7 @@ func DeleteCaregiver(c *gin.Context) {
 }
 
 func caregiverAdminView(row db.CaregiverDO) gin.H {
-	return gin.H{"id": row.ID, "avatarUrl": row.AvatarURL, "name": row.Name, "age": row.Age, "experienceYears": row.ExperienceYears, "origin": row.Origin, "serviceIds": db.UnmarshalStringSlice(row.ServiceIDs), "jobs": db.UnmarshalStringSlice(row.Jobs), "availabilityStatus": row.AvailabilityStatus, "rating": row.Rating, "serviceCount": row.ServiceCount, "recommended": row.Recommended, "introduction": row.Introduction, "education": row.Education, "ethnicity": row.Ethnicity, "zodiac": row.Zodiac, "skills": db.UnmarshalStringSlice(row.Skills), "certificates": jsonValue(row.Certificates, []interface{}{}), "identityVerified": row.IdentityVerified, "physicalExamVerified": row.PhysicalExamVerified, "medicalReportImageUrls": db.UnmarshalStringSlice(row.MedicalReportImageURLs), "personalInfo": jsonValue(row.PersonalInfo, map[string]interface{}{}), "workHistory": jsonValue(row.WorkHistory, []interface{}{}), "photoUrls": db.UnmarshalStringSlice(row.PhotoURLs), "published": row.Published, "sort": row.Sort, "createdAt": row.CreatedAt, "updatedAt": row.UpdatedAt}
+	return gin.H{"id": row.ID, "applicationId": row.ApplicationID, "avatarUrl": row.AvatarURL, "name": row.Name, "age": row.Age, "experienceYears": row.ExperienceYears, "origin": row.Origin, "serviceIds": db.UnmarshalStringSlice(row.ServiceIDs), "jobs": db.UnmarshalStringSlice(row.Jobs), "availabilityStatus": row.AvailabilityStatus, "rating": row.Rating, "serviceCount": row.ServiceCount, "recommended": row.Recommended, "introduction": row.Introduction, "education": row.Education, "ethnicity": row.Ethnicity, "zodiac": row.Zodiac, "skills": db.UnmarshalStringSlice(row.Skills), "certificates": jsonValue(row.Certificates, []interface{}{}), "identityVerified": row.IdentityVerified, "physicalExamVerified": row.PhysicalExamVerified, "medicalReportImageUrls": db.UnmarshalStringSlice(row.MedicalReportImageURLs), "personalInfo": jsonValue(row.PersonalInfo, map[string]interface{}{}), "workHistory": jsonValue(row.WorkHistory, []interface{}{}), "photoUrls": db.UnmarshalStringSlice(row.PhotoURLs), "status": row.Status, "source": row.Source, "sort": row.Sort, "createdAt": row.CreatedAt, "updatedAt": row.UpdatedAt}
 }
 
 func ListDemands(c *gin.Context) {
@@ -205,6 +231,11 @@ func assignBusiness(c *gin.Context, entityType string) {
 	}
 	if c.ShouldBindJSON(&req) != nil || req.AdminID == 0 {
 		response.Error(c, 400, "顾问账号不能为空")
+		return
+	}
+	admin, err := db.GetAdminByID(req.AdminID)
+	if err != nil || admin.Status != db.AdminStatusActive {
+		response.Error(c, 400, "顾问账号不存在或已停用")
 		return
 	}
 	if entityType == "DEMAND" {
@@ -263,44 +294,6 @@ func BusinessStatusHistory(c *gin.Context) {
 		return
 	}
 	response.OK(c, gin.H{"list": rows})
-}
-
-func GetBusinessContent(c *gin.Context) {
-	key, ok := contentKey(c.Param("key"))
-	if !ok {
-		response.Error(c, 404, "内容配置不存在")
-		return
-	}
-	row, err := db.GetAppConfig(key)
-	if err != nil {
-		response.Error(c, 404, "内容配置不存在")
-		return
-	}
-	response.OK(c, gin.H{"key": c.Param("key"), "value": jsonValue(row.Value, map[string]interface{}{}), "updatedAt": row.UpdatedAt})
-}
-func SaveBusinessContent(c *gin.Context) {
-	key, ok := contentKey(c.Param("key"))
-	if !ok {
-		response.Error(c, 404, "内容配置不存在")
-		return
-	}
-	var req struct {
-		Value interface{} `json:"value"`
-	}
-	if c.ShouldBindJSON(&req) != nil {
-		response.Error(c, 400, "参数错误")
-		return
-	}
-	if err := db.UpsertAppConfig(key, mustJSON(req.Value, "{}"), "护理小程序运营内容"); err != nil {
-		response.Error(c, 400, err.Error())
-		return
-	}
-	response.OKMsg(c, "内容已保存")
-}
-func contentKey(key string) (string, bool) {
-	values := map[string]string{"app-config": "mini.business.app", "about": "mini.business.about", "agreement-privacy": "mini.business.agreement.privacy", "agreement-service": "mini.business.agreement.service"}
-	value, ok := values[key]
-	return value, ok
 }
 
 func misPage(c *gin.Context) (int, int) {

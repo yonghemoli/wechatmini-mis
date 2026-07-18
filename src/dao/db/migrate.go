@@ -7,15 +7,7 @@ func AutoMigrate() error {
 	}
 	err := Get().AutoMigrate(
 		&AdminDO{},
-		&OrderDO{},
 		&CustomerDO{},
-		&ServiceTypeDO{},
-		&ServiceDO{},
-		&ShopDO{},
-		&AddressDO{},
-		&ServiceTargetDO{},
-		&DishDO{},
-		&MealPackageDO{},
 		&AppConfigDO{},
 		&FAQDO{},
 		&ChatSessionDO{},

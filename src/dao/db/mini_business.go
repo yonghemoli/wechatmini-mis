@@ -14,7 +14,7 @@ type CaregiverListQuery struct {
 	Keyword            string
 	AvailabilityStatus string
 	Recommended        *bool
-	Published          *bool
+	Status             string
 	Page               int
 	PageSize           int
 }
@@ -72,8 +72,8 @@ func DeleteMiniServiceCategory(id string) error {
 
 func ListCaregivers(q CaregiverListQuery) ([]CaregiverDO, int64, error) {
 	query := Get().Model(&CaregiverDO{})
-	if q.Published != nil {
-		query = query.Where("published = ?", *q.Published)
+	if q.Status != "" {
+		query = query.Where("status = ?", q.Status)
 	}
 	if q.Recommended != nil {
 		query = query.Where("recommended = ?", *q.Recommended)
@@ -104,11 +104,11 @@ func ListCaregivers(q CaregiverListQuery) ([]CaregiverDO, int64, error) {
 	return rows, total, err
 }
 
-func GetCaregiver(id string, onlyPublished bool) (*CaregiverDO, error) {
+func GetCaregiver(id string, onlyCompleted bool) (*CaregiverDO, error) {
 	var row CaregiverDO
 	query := Get().Where("id = ?", id)
-	if onlyPublished {
-		query = query.Where("published = ?", true)
+	if onlyCompleted {
+		query = query.Where("status = ?", "COMPLETED")
 	}
 	if err := query.First(&row).Error; err != nil {
 		return nil, err
@@ -159,7 +159,14 @@ func FindResumeByIdempotency(scope, key string, since time.Time) (*ResumeDO, err
 	return &row, err
 }
 
-func CreateResume(row *ResumeDO) error { return Get().Create(row).Error }
+func CreateResumeAndCaregiverDraft(resume *ResumeDO, draft *CaregiverDO) error {
+	return Get().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(resume).Error; err != nil {
+			return err
+		}
+		return tx.Create(draft).Error
+	})
+}
 
 func ListDemands(q BusinessListQuery) ([]DemandDO, int64, error) {
 	query := Get().Model(&DemandDO{})

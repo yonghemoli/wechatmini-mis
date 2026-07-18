@@ -154,9 +154,8 @@ func ListBusinessCaregivers(c *gin.Context) {
 		}
 		recommended = &value
 	}
-	published := true
 	rows, total, err := db.ListCaregivers(db.CaregiverListQuery{ServiceID: strings.TrimSpace(c.Query("serviceId")), Keyword: keyword,
-		AvailabilityStatus: status, Recommended: recommended, Published: &published, Page: page, PageSize: pageSize})
+		AvailabilityStatus: status, Recommended: recommended, Status: "COMPLETED", Page: page, PageSize: pageSize})
 	if err != nil {
 		businessFail(c, 500, 50000, "查询服务人员失败")
 		return
@@ -316,8 +315,16 @@ func CreateBusinessResume(c *gin.Context) {
 	row := &db.ResumeDO{ID: businessID("R", now), UserID: userID, IntentionServiceID: service.ID, ServiceName: service.Name,
 		WorkStatus: req.WorkStatus, ExperienceRange: req.ExperienceRange, EntryYear: req.EntryYear, ContactPhone: req.ContactPhone, Status: "PENDING_CONTACT",
 		IdempotencyKey: key, SubmissionScope: scope, CreatedAt: now, UpdatedAt: now}
-	if err := db.CreateResume(row); err != nil {
-		businessFail(c, 500, 50000, "提交求职简历失败")
+	draft := &db.CaregiverDO{
+		ID: "CG_" + row.ID, ApplicationID: row.ID, Name: maskPhone(req.ContactPhone), Age: 0,
+		ExperienceYears: time.Now().Year() - req.EntryYear, ServiceIDs: db.MarshalStringSlice([]string{service.ID}),
+		Jobs: db.MarshalStringSlice([]string{service.Name}), AvailabilityStatus: req.WorkStatus,
+		Skills: "[]", Certificates: "[]", MedicalReportImageURLs: "[]", PersonalInfo: "{}",
+		WorkHistory: "[]", PhotoURLs: "[]", Status: "DRAFT", Source: "SELF_SUBMITTED",
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := db.CreateResumeAndCaregiverDraft(row, draft); err != nil {
+		businessFail(c, 500, 50000, "提交求职申请失败")
 		return
 	}
 	businessOK(c, 201, createdView(row.ID, row.Status, row.CreatedAt))
@@ -343,10 +350,21 @@ func BusinessUserMe(c *gin.Context) {
 }
 
 func BusinessAppConfig(c *gin.Context) {
-	businessConfig(c, "mini.business.app", `{"consultant":{"name":"小禾顾问","phone":"19994740191","avatarUrl":""},"homeBanners":[],"trustItems":["身份核验","健康信息","顾问跟进"]}`)
+	banners := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.banners", `{"urls":[]}`))
+	customerService := decodeJSONValue(db.MustAppConfigJSON("mini.decoration.customer_service", `{"name":"","phone":"","avatarUrl":""}`), map[string]interface{}{})
+	company := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.company", `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`))
+	urls, _ := banners["urls"].([]interface{})
+	homeBanners := make([]gin.H, 0, len(urls))
+	for i, raw := range urls {
+		if url, ok := raw.(string); ok {
+			homeBanners = append(homeBanners, gin.H{"id": fmt.Sprintf("banner_%02d", i+1), "imageUrl": url, "actionType": "NONE", "actionValue": "", "sort": (i + 1) * 10})
+		}
+	}
+	businessOK(c, 200, gin.H{"bannerUrls": banners["urls"], "homeBanners": homeBanners, "consultant": customerService, "customerService": customerService, "company": company, "trustItems": company["serviceGuarantees"]})
 }
 func BusinessAbout(c *gin.Context) {
-	businessConfig(c, "mini.business.about", `{"title":"永和护理","introduction":"专注家庭护理服务。","guarantees":["身份核验","健康信息","顾问跟进"]}`)
+	company := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.company", `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`))
+	businessOK(c, 200, company)
 }
 func BusinessAgreement(c *gin.Context) {
 	kind := c.Param("type")
@@ -367,6 +385,20 @@ func decodeJSONValue(raw string, fallback interface{}) interface{} {
 		return fallback
 	}
 	return value
+}
+func decodeJSONMap(raw string) map[string]interface{} {
+	value := map[string]interface{}{}
+	_ = json.Unmarshal([]byte(raw), &value)
+	return value
+}
+
+func ListBusinessFAQs(c *gin.Context) {
+	rows, err := db.ListPublicFAQs(strings.TrimSpace(c.Query("category")))
+	if err != nil {
+		businessFail(c, 500, 50000, "查询常见问题失败")
+		return
+	}
+	businessOK(c, 200, gin.H{"list": rows})
 }
 func createdView(id, status string, createdAt time.Time) gin.H {
 	return gin.H{"id": id, "status": status, "createdAt": createdAt.Format(time.RFC3339)}
