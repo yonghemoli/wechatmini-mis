@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS mini_service_categories (
 CREATE TABLE IF NOT EXISTS caregivers (
     id VARCHAR(40) NOT NULL,
     application_id VARCHAR(32) DEFAULT NULL,
+    contact_phone VARCHAR(32) NOT NULL DEFAULT '',
     avatar_url VARCHAR(512) NOT NULL DEFAULT '',
     name VARCHAR(64) NOT NULL,
     age INT NOT NULL,
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS demands (
     service_name VARCHAR(64) NOT NULL,
     caregiver_id VARCHAR(40) DEFAULT NULL,
     caregiver_name VARCHAR(64) NOT NULL DEFAULT '',
+    contact_name VARCHAR(64) NOT NULL DEFAULT '',
     contact_phone VARCHAR(32) NOT NULL,
     requirements TEXT NOT NULL,
     source VARCHAR(32) NOT NULL,
@@ -94,6 +96,7 @@ CREATE TABLE IF NOT EXISTS resumes (
     work_status VARCHAR(32) NOT NULL,
     experience_range VARCHAR(32) NOT NULL,
     entry_year INT NOT NULL,
+    contact_name VARCHAR(64) NOT NULL DEFAULT '',
     contact_phone VARCHAR(32) NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'PENDING_CONTACT',
     assigned_admin_id BIGINT UNSIGNED DEFAULT NULL,
@@ -278,23 +281,23 @@ ON DUPLICATE KEY UPDATE
 
 -- 4. 客户服务需求。覆盖待联系、已联系、匹配中和关闭状态。
 INSERT INTO demands
-    (id, user_id, service_id, service_name, caregiver_id, caregiver_name,
+    (id, user_id, service_id, service_name, caregiver_id, caregiver_name, contact_name,
      contact_phone, requirements, source, status, assigned_admin_id,
      idempotency_key, submission_scope, created_at, updated_at)
 VALUES
-    ('DTEST202607180001', 'usr_test_1001', 'nursing', '护工', 'auntie-03', '李阿姨',
+    ('DTEST202607180001', 'usr_test_1001', 'nursing', '护工', 'auntie-03', '李阿姨', '张女士',
      '13800001001', '工作日上午照护老人，需要陪诊和康复协助。',
      'CAREGIVER_DETAIL', 'PENDING_CONTACT', NULL,
      'test-demand-001', 'user:usr_test_1001', '2026-07-18 10:30:00', '2026-07-18 10:30:00'),
-    ('DTEST202607180002', '', 'maternity', '月嫂', 'auntie-01', '覃阿姨',
+    ('DTEST202607180002', '', 'maternity', '月嫂', 'auntie-01', '覃阿姨', '刘女士',
      '13800001003', '预产期在八月，希望提前了解住家月嫂服务。',
      'HOME_SERVICE', 'CONTACTED', NULL,
      'test-demand-002', 'phone:13800001003', '2026-07-18 11:00:00', '2026-07-18 11:20:00'),
-    ('DTEST202607180003', '', 'nanny', '保姆', NULL, '',
+    ('DTEST202607180003', '', 'nanny', '保姆', NULL, '', '陈先生',
      '13800001004', '需要白班保姆，负责做饭和日常保洁。',
      'SERVICE_LIST', 'MATCHING', NULL,
      'test-demand-003', 'phone:13800001004', '2026-07-17 09:00:00', '2026-07-18 09:10:00'),
-    ('DTEST202607180004', '', 'hourly', '钟点工', 'auntie-02', '黄阿姨',
+    ('DTEST202607180004', '', 'hourly', '钟点工', 'auntie-02', '黄阿姨', '杨女士',
      '13800001005', '每周两次家庭保洁，每次三小时。',
      'OTHER', 'CLOSED', NULL,
      'test-demand-004', 'phone:13800001005', '2026-07-16 14:00:00', '2026-07-18 09:30:00')
@@ -304,6 +307,7 @@ ON DUPLICATE KEY UPDATE
     service_name = VALUES(service_name),
     caregiver_id = VALUES(caregiver_id),
     caregiver_name = VALUES(caregiver_name),
+    contact_name = VALUES(contact_name),
     contact_phone = VALUES(contact_phone),
     requirements = VALUES(requirements),
     source = VALUES(source),

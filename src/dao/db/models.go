@@ -105,6 +105,7 @@ func (MiniServiceCategoryDO) TableName() string { return "mini_service_categorie
 type CaregiverDO struct {
 	ID                     string    `gorm:"size:40;primaryKey" json:"id"`
 	ApplicationID          string    `gorm:"size:32;index;column:application_id" json:"applicationId"`
+	ContactPhone           string    `gorm:"size:32;column:contact_phone" json:"contactPhone"`
 	AvatarURL              string    `gorm:"size:512;not null;default:'';column:avatar_url" json:"avatarUrl"`
 	Name                   string    `gorm:"size:64;not null;index" json:"name"`
 	Age                    int       `gorm:"not null" json:"age"`
@@ -144,6 +145,7 @@ type DemandDO struct {
 	ServiceName     string    `gorm:"size:64;not null;column:service_name" json:"serviceName"`
 	CaregiverID     string    `gorm:"size:40;index;column:caregiver_id" json:"caregiverId"`
 	CaregiverName   string    `gorm:"size:64;not null;default:'';column:caregiver_name" json:"caregiverName"`
+	ContactName     string    `gorm:"size:64;not null;default:'';column:contact_name" json:"contactName"`
 	ContactPhone    string    `gorm:"size:32;not null;index;column:contact_phone" json:"contactPhone"`
 	Requirements    string    `gorm:"type:text;not null" json:"requirements"`
 	Source          string    `gorm:"size:32;not null;index" json:"source"`
@@ -165,6 +167,7 @@ type ResumeDO struct {
 	WorkStatus         string    `gorm:"size:32;not null;index;column:work_status" json:"workStatus"`
 	ExperienceRange    string    `gorm:"size:32;not null;column:experience_range" json:"experienceRange"`
 	EntryYear          int       `gorm:"not null;column:entry_year" json:"entryYear"`
+	ContactName        string    `gorm:"size:64;not null;default:'';column:contact_name" json:"contactName"`
 	ContactPhone       string    `gorm:"size:32;not null;index;column:contact_phone" json:"contactPhone"`
 	Status             string    `gorm:"size:32;not null;default:'PENDING_CONTACT';index" json:"status"`
 	AssignedAdminID    uint      `gorm:"index;column:assigned_admin_id" json:"assignedAdminId"`

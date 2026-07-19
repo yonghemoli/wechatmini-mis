@@ -5,6 +5,40 @@
 
 SET @schema_name = DATABASE();
 
+-- 预约联系人姓名：旧数据保留为空，新提交会写入姓名。
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE demands ADD COLUMN contact_name VARCHAR(64) NOT NULL DEFAULT '''' AFTER caregiver_name',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name AND TABLE_NAME = 'demands' AND COLUMN_NAME = 'contact_name'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE resumes ADD COLUMN contact_name VARCHAR(64) NOT NULL DEFAULT '''' AFTER entry_year',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name AND TABLE_NAME = 'resumes' AND COLUMN_NAME = 'contact_name'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @migration_sql = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE caregivers ADD COLUMN contact_phone VARCHAR(32) NOT NULL DEFAULT '''' AFTER application_id',
+        'SET @schema_noop = 0')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = @schema_name AND TABLE_NAME = 'caregivers' AND COLUMN_NAME = 'contact_phone'
+);
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
 -- 将旧 caregivers.published 平滑迁移为 DRAFT / COMPLETED，并补充数据来源。
 SET @migration_sql = (
     SELECT IF(COUNT(*) = 0,

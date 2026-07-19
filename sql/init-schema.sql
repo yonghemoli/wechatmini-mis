@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS mini_service_categories (
 CREATE TABLE IF NOT EXISTS caregivers (
     id VARCHAR(40) NOT NULL,
     application_id VARCHAR(32) DEFAULT NULL,
+    contact_phone VARCHAR(32) NOT NULL DEFAULT '',
     avatar_url VARCHAR(512) NOT NULL DEFAULT '',
     name VARCHAR(64) NOT NULL,
     age INT NOT NULL,
@@ -107,6 +108,7 @@ CREATE TABLE IF NOT EXISTS demands (
     service_name VARCHAR(64) NOT NULL,
     caregiver_id VARCHAR(40) DEFAULT NULL,
     caregiver_name VARCHAR(64) NOT NULL DEFAULT '',
+    contact_name VARCHAR(64) NOT NULL DEFAULT '',
     contact_phone VARCHAR(32) NOT NULL,
     requirements TEXT NOT NULL,
     source VARCHAR(32) NOT NULL,
@@ -133,6 +135,7 @@ CREATE TABLE IF NOT EXISTS resumes (
     work_status VARCHAR(32) NOT NULL,
     experience_range VARCHAR(32) NOT NULL,
     entry_year INT NOT NULL,
+    contact_name VARCHAR(64) NOT NULL DEFAULT '',
     contact_phone VARCHAR(32) NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'PENDING_CONTACT',
     assigned_admin_id BIGINT UNSIGNED DEFAULT NULL,

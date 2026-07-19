@@ -195,6 +195,7 @@ func CreateBusinessDemand(c *gin.Context) {
 	var req struct {
 		ServiceID    string `json:"serviceId"`
 		CaregiverID  string `json:"caregiverId"`
+		ContactName  string `json:"contactName"`
 		ContactPhone string `json:"contactPhone"`
 		Requirements string `json:"requirements"`
 		Source       string `json:"source"`
@@ -205,6 +206,7 @@ func CreateBusinessDemand(c *gin.Context) {
 	}
 	req.ServiceID = strings.TrimSpace(req.ServiceID)
 	req.CaregiverID = strings.TrimSpace(req.CaregiverID)
+	req.ContactName = strings.TrimSpace(req.ContactName)
 	req.ContactPhone = strings.TrimSpace(req.ContactPhone)
 	req.Requirements = strings.TrimSpace(req.Requirements)
 	req.Source = strings.TrimSpace(req.Source)
@@ -238,7 +240,14 @@ func CreateBusinessDemand(c *gin.Context) {
 		}
 		caregiverName = caregiver.Name
 	}
-	userID := requestUserID(c)
+	user, userID := requestUser(c)
+	if req.ContactName == "" {
+		req.ContactName = strings.TrimSpace(user.NickName)
+	}
+	if utf8.RuneCountInString(req.ContactName) < 1 || utf8.RuneCountInString(req.ContactName) > 64 {
+		businessFail(c, 400, 40000, "联系人姓名长度须为 1—64 字")
+		return
+	}
 	scope := submissionScope(userID, req.ContactPhone)
 	key := strings.TrimSpace(c.GetHeader("Idempotency-Key"))
 	if len(key) > 128 {
@@ -255,7 +264,7 @@ func CreateBusinessDemand(c *gin.Context) {
 	}
 	now := time.Now()
 	row := &db.DemandDO{ID: businessID("D", now), UserID: userID, ServiceID: service.ID, ServiceName: service.Name, CaregiverID: req.CaregiverID,
-		CaregiverName: caregiverName, ContactPhone: req.ContactPhone, Requirements: req.Requirements, Source: req.Source, Status: "PENDING_CONTACT", IdempotencyKey: key, SubmissionScope: scope, CreatedAt: now, UpdatedAt: now}
+		CaregiverName: caregiverName, ContactName: req.ContactName, ContactPhone: req.ContactPhone, Requirements: req.Requirements, Source: req.Source, Status: "PENDING_CONTACT", IdempotencyKey: key, SubmissionScope: scope, CreatedAt: now, UpdatedAt: now}
 	if err := db.CreateDemand(row); err != nil {
 		businessFail(c, 500, 50000, "提交服务需求失败")
 		return
@@ -269,6 +278,7 @@ func CreateBusinessResume(c *gin.Context) {
 		WorkStatus         string `json:"workStatus"`
 		ExperienceRange    string `json:"experienceRange"`
 		EntryYear          int    `json:"entryYear"`
+		ContactName        string `json:"contactName"`
 		ContactPhone       string `json:"contactPhone"`
 	}
 	if c.ShouldBindJSON(&req) != nil {
@@ -278,6 +288,7 @@ func CreateBusinessResume(c *gin.Context) {
 	req.IntentionServiceID = strings.TrimSpace(req.IntentionServiceID)
 	req.WorkStatus = strings.TrimSpace(req.WorkStatus)
 	req.ExperienceRange = strings.TrimSpace(req.ExperienceRange)
+	req.ContactName = strings.TrimSpace(req.ContactName)
 	req.ContactPhone = strings.TrimSpace(req.ContactPhone)
 	service, err := db.GetMiniServiceCategory(req.IntentionServiceID, true)
 	if err != nil {
@@ -300,7 +311,14 @@ func CreateBusinessResume(c *gin.Context) {
 		businessFail(c, 400, 40001, "手机号格式不正确")
 		return
 	}
-	userID := requestUserID(c)
+	user, userID := requestUser(c)
+	if req.ContactName == "" {
+		req.ContactName = strings.TrimSpace(user.NickName)
+	}
+	if utf8.RuneCountInString(req.ContactName) < 1 || utf8.RuneCountInString(req.ContactName) > 64 {
+		businessFail(c, 400, 40000, "联系人姓名长度须为 1—64 字")
+		return
+	}
 	scope := submissionScope(userID, req.ContactPhone)
 	key := strings.TrimSpace(c.GetHeader("Idempotency-Key"))
 	if len(key) > 128 {
@@ -313,13 +331,13 @@ func CreateBusinessResume(c *gin.Context) {
 	}
 	now := time.Now()
 	row := &db.ResumeDO{ID: businessID("R", now), UserID: userID, IntentionServiceID: service.ID, ServiceName: service.Name,
-		WorkStatus: req.WorkStatus, ExperienceRange: req.ExperienceRange, EntryYear: req.EntryYear, ContactPhone: req.ContactPhone, Status: "PENDING_CONTACT",
+		WorkStatus: req.WorkStatus, ExperienceRange: req.ExperienceRange, EntryYear: req.EntryYear, ContactName: req.ContactName, ContactPhone: req.ContactPhone, Status: "PENDING_CONTACT",
 		IdempotencyKey: key, SubmissionScope: scope, CreatedAt: now, UpdatedAt: now}
 	draft := &db.CaregiverDO{
-		ID: "CG_" + row.ID, ApplicationID: row.ID, Name: maskPhone(req.ContactPhone), Age: 0,
+		ID: "CG_" + row.ID, ApplicationID: row.ID, ContactPhone: req.ContactPhone, Name: req.ContactName, Age: 0,
 		ExperienceYears: time.Now().Year() - req.EntryYear, ServiceIDs: db.MarshalStringSlice([]string{service.ID}),
 		Jobs: db.MarshalStringSlice([]string{service.Name}), AvailabilityStatus: req.WorkStatus,
-		Skills: "[]", Certificates: "[]", MedicalReportImageURLs: "[]", PersonalInfo: "{}",
+		Skills: "[]", Certificates: "[]", MedicalReportImageURLs: "[]", PersonalInfo: encodeJSONValue(gin.H{"contactName": req.ContactName, "contactPhone": req.ContactPhone}, "{}"),
 		WorkHistory: "[]", PhotoURLs: "[]", Status: "DRAFT", Source: "SELF_SUBMITTED",
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -385,6 +403,14 @@ func decodeJSONValue(raw string, fallback interface{}) interface{} {
 		return fallback
 	}
 	return value
+}
+
+func encodeJSONValue(value interface{}, fallback string) string {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return fallback
+	}
+	return string(raw)
 }
 func decodeJSONMap(raw string) map[string]interface{} {
 	value := map[string]interface{}{}
