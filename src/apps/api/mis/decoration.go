@@ -2,6 +2,7 @@ package mis
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -38,27 +39,57 @@ func GetDecoration(c *gin.Context) {
 func GetDecorationBanners(c *gin.Context) { response.OK(c, decorationBannersValue()) }
 func SaveDecorationBanners(c *gin.Context) {
 	var req struct {
-		URLs []string `json:"urls"`
+		Items []db.HomeBanner `json:"items"`
 	}
 	if c.ShouldBindJSON(&req) != nil {
 		response.Error(c, 400, "参数错误")
 		return
 	}
-	if req.URLs == nil {
-		req.URLs = []string{}
+	if req.Items == nil {
+		req.Items = []db.HomeBanner{}
 	}
-	if len(req.URLs) > 20 {
+	if len(req.Items) > 20 {
 		response.Error(c, 400, "宣传图最多 20 张")
 		return
 	}
-	for i := range req.URLs {
-		req.URLs[i] = strings.TrimSpace(req.URLs[i])
-		if req.URLs[i] == "" {
-			response.Error(c, 400, "宣传图 URL 不能为空")
+	ids := make(map[string]struct{}, len(req.Items))
+	for i := range req.Items {
+		item := &req.Items[i]
+		item.ID = strings.TrimSpace(item.ID)
+		item.ImageURL = strings.TrimSpace(item.ImageURL)
+		item.Kicker = strings.TrimSpace(item.Kicker)
+		item.Title = strings.TrimSpace(item.Title)
+		item.Description = strings.TrimSpace(item.Description)
+		item.ActionType = strings.ToUpper(strings.TrimSpace(item.ActionType))
+		item.ActionValue = strings.TrimSpace(item.ActionValue)
+		if item.ID == "" {
+			item.ID = fmt.Sprintf("banner_%02d", i+1)
+		}
+		if item.ImageURL == "" || item.Title == "" {
+			response.Error(c, 400, "轮播图图片和标题不能为空")
 			return
 		}
+		if item.ActionType == "" {
+			item.ActionType = "NONE"
+		}
+		if item.ActionType != "NONE" && item.ActionType != "DEMAND" && item.ActionType != "CAREGIVER_LIST" {
+			response.Error(c, 400, "轮播图跳转类型无效")
+			return
+		}
+		if item.ActionType == "DEMAND" && item.ActionValue == "" {
+			response.Error(c, 400, "预约跳转需要填写服务项目 ID")
+			return
+		}
+		if _, exists := ids[item.ID]; exists {
+			response.Error(c, 400, "轮播图 ID 不能重复")
+			return
+		}
+		ids[item.ID] = struct{}{}
+		if item.Sort == 0 {
+			item.Sort = (i + 1) * 10
+		}
 	}
-	saveDecorationValue(c, decorationBannersKey, gin.H{"urls": req.URLs}, "宣传图配置")
+	saveDecorationValue(c, decorationBannersKey, gin.H{"items": req.Items}, "首页轮播配置")
 }
 
 func GetDecorationCustomerService(c *gin.Context) { response.OK(c, decorationCustomerServiceValue()) }
@@ -143,8 +174,8 @@ func companyDecorationValue(raw string) gin.H {
 }
 
 func decorationBannersValue() gin.H {
-	value := decorationObject(decorationBannersKey, `{"urls":[]}`)
-	return gin.H{"urls": decorationStringSlice(value["urls"])}
+	value := decorationObject(decorationBannersKey, `{"items":[]}`)
+	return gin.H{"items": db.NormalizeHomeBanners(map[string]interface{}(value))}
 }
 
 func decorationCustomerServiceValue() gin.H {

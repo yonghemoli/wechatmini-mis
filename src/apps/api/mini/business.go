@@ -350,18 +350,16 @@ func BusinessUserMe(c *gin.Context) {
 }
 
 func BusinessAppConfig(c *gin.Context) {
-	banners := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.banners", `{"urls":[]}`))
+	banners := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.banners", `{"items":[]}`))
 	customerService := decodeJSONValue(db.MustAppConfigJSON("mini.decoration.customer_service", `{"name":"","phone":"","avatarUrl":""}`), map[string]interface{}{})
 	company := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.company", `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`))
 	company["serviceGuarantees"] = db.NormalizeServiceGuarantees(company["serviceGuarantees"])
-	urls, _ := banners["urls"].([]interface{})
-	homeBanners := make([]gin.H, 0, len(urls))
-	for i, raw := range urls {
-		if url, ok := raw.(string); ok {
-			homeBanners = append(homeBanners, gin.H{"id": fmt.Sprintf("banner_%02d", i+1), "imageUrl": url, "actionType": "NONE", "actionValue": "", "sort": (i + 1) * 10})
-		}
+	homeBanners := db.NormalizeHomeBanners(banners)
+	bannerURLs := make([]string, 0, len(homeBanners))
+	for _, banner := range homeBanners {
+		bannerURLs = append(bannerURLs, banner.ImageURL)
 	}
-	businessOK(c, 200, gin.H{"bannerUrls": banners["urls"], "homeBanners": homeBanners, "consultant": customerService, "customerService": customerService, "company": company, "trustItems": company["serviceGuarantees"]})
+	businessOK(c, 200, gin.H{"bannerUrls": bannerURLs, "homeBanners": homeBanners, "consultant": customerService, "customerService": customerService, "company": company, "trustItems": company["serviceGuarantees"]})
 }
 func BusinessAbout(c *gin.Context) {
 	company := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.company", `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`))

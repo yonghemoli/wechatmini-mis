@@ -383,7 +383,7 @@ INSERT INTO app_configs (`key`, value, note, created_at, updated_at)
 VALUES
     (
         'mini.decoration.banners',
-        '{"urls":["https://cdn.example.com/banners/maternity.jpg","https://cdn.example.com/banners/nursing.jpg"]}',
+        '{"items":[{"id":"banner_maternity","imageUrl":"https://cdn.example.com/banners/maternity.jpg","kicker":"专业月嫂","title":"安心月子，从专业照护开始","description":"严选经验服务人员，顾问全程跟进","actionType":"DEMAND","actionValue":"maternity","sort":10},{"id":"banner_nursing","imageUrl":"https://cdn.example.com/banners/nursing.jpg","kicker":"老人照护","title":"多一份陪伴，多一份安心","description":"生活照料、陪诊与康复协助","actionType":"DEMAND","actionValue":"nursing","sort":20}]}',
         '宣传图测试数据', NOW(), NOW()
     ),
     (

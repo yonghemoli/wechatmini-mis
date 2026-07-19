@@ -10,3 +10,16 @@ func TestBusinessStatusTransitions(t *testing.T) {
 		t.Fatal("resume transition rules are invalid")
 	}
 }
+
+func TestNormalizeHomeBannersSupportsCurrentAndLegacyConfig(t *testing.T) {
+	current := NormalizeHomeBanners(map[string]interface{}{"items": []interface{}{map[string]interface{}{
+		"id": "banner_1", "imageUrl": "https://example.com/banner.jpg", "title": "专业护理", "actionType": "DEMAND", "actionValue": "nursing", "sort": float64(10),
+	}}})
+	if len(current) != 1 || current[0].Title != "专业护理" || current[0].ActionValue != "nursing" {
+		t.Fatalf("current banner config was not preserved: %#v", current)
+	}
+	legacy := NormalizeHomeBanners(map[string]interface{}{"urls": []interface{}{"https://example.com/legacy.jpg"}})
+	if len(legacy) != 1 || legacy[0].ImageURL != "https://example.com/legacy.jpg" || legacy[0].ActionType != "NONE" {
+		t.Fatalf("legacy URL config was not converted: %#v", legacy)
+	}
+}
