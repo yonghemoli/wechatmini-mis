@@ -353,6 +353,7 @@ func BusinessAppConfig(c *gin.Context) {
 	banners := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.banners", `{"urls":[]}`))
 	customerService := decodeJSONValue(db.MustAppConfigJSON("mini.decoration.customer_service", `{"name":"","phone":"","avatarUrl":""}`), map[string]interface{}{})
 	company := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.company", `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`))
+	company["serviceGuarantees"] = db.NormalizeServiceGuarantees(company["serviceGuarantees"])
 	urls, _ := banners["urls"].([]interface{})
 	homeBanners := make([]gin.H, 0, len(urls))
 	for i, raw := range urls {
@@ -364,6 +365,7 @@ func BusinessAppConfig(c *gin.Context) {
 }
 func BusinessAbout(c *gin.Context) {
 	company := decodeJSONMap(db.MustAppConfigJSON("mini.decoration.company", `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`))
+	company["serviceGuarantees"] = db.NormalizeServiceGuarantees(company["serviceGuarantees"])
 	businessOK(c, 200, company)
 }
 func BusinessAgreement(c *gin.Context) {

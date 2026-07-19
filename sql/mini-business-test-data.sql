@@ -393,7 +393,7 @@ VALUES
     ),
     (
         'mini.decoration.company',
-        '{"logoUrl":"https://cdn.example.com/company/logo.png","name":"永和护理","address":"广西南宁市青秀区测试路 1 号","introduction":"永和护理专注于母婴、育儿、家政和老人照护服务，为家庭提供经过资料核验的服务人员和顾问跟进。","serviceGuarantees":["服务人员身份资料核验","健康信息按授权范围展示","专属顾问跟进服务需求","服务过程持续回访"],"contactPhone":"19900001001"}',
+        '{"logoUrl":"https://cdn.example.com/company/logo.png","name":"永和护理","address":"广西南宁市青秀区测试路 1 号","introduction":"永和护理专注于母婴、育儿、家政和老人照护服务，为家庭提供经过资料核验的服务人员和顾问跟进。","serviceGuarantees":[{"icon":"verified","title":"身份资料核验","sub":"服务人员资料已核验"},{"icon":"health","title":"健康信息展示","sub":"按授权范围展示"},{"icon":"support","title":"专属顾问跟进","sub":"持续跟进服务需求"},{"icon":"return","title":"服务过程回访","sub":"服务后持续回访"}],"contactPhone":"19900001001"}',
         '公司信息测试数据', NOW(), NOW()
     ),
     (

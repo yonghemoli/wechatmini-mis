@@ -1,6 +1,7 @@
 package mis
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -27,14 +28,14 @@ func GetDecoration(c *gin.Context) {
 		items = append(items, categoryAdminView(item))
 	}
 	response.OK(c, gin.H{
-		"banners":         jsonValue(db.MustAppConfigJSON(decorationBannersKey, `{"urls":[]}`), gin.H{"urls": []string{}}),
-		"customerService": jsonValue(db.MustAppConfigJSON(decorationCustomerServiceKey, `{"name":"","phone":"","avatarUrl":""}`), gin.H{}),
-		"company":         jsonValue(db.MustAppConfigJSON(decorationCompanyKey, `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`), gin.H{}),
+		"banners":         decorationBannersValue(),
+		"customerService": decorationCustomerServiceValue(),
+		"company":         decorationCompanyValue(),
 		"services":        items,
 	})
 }
 
-func GetDecorationBanners(c *gin.Context) { decorationValue(c, decorationBannersKey, `{"urls":[]}`) }
+func GetDecorationBanners(c *gin.Context) { response.OK(c, decorationBannersValue()) }
 func SaveDecorationBanners(c *gin.Context) {
 	var req struct {
 		URLs []string `json:"urls"`
@@ -42,6 +43,9 @@ func SaveDecorationBanners(c *gin.Context) {
 	if c.ShouldBindJSON(&req) != nil {
 		response.Error(c, 400, "参数错误")
 		return
+	}
+	if req.URLs == nil {
+		req.URLs = []string{}
 	}
 	if len(req.URLs) > 20 {
 		response.Error(c, 400, "宣传图最多 20 张")
@@ -57,16 +61,21 @@ func SaveDecorationBanners(c *gin.Context) {
 	saveDecorationValue(c, decorationBannersKey, gin.H{"urls": req.URLs}, "宣传图配置")
 }
 
-func GetDecorationCustomerService(c *gin.Context) {
-	decorationValue(c, decorationCustomerServiceKey, `{"name":"","phone":"","avatarUrl":""}`)
-}
+func GetDecorationCustomerService(c *gin.Context) { response.OK(c, decorationCustomerServiceValue()) }
 func SaveDecorationCustomerService(c *gin.Context) {
 	var req struct {
 		Name      string `json:"name"`
 		Phone     string `json:"phone"`
 		AvatarURL string `json:"avatarUrl"`
 	}
-	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Phone) == "" {
+	if c.ShouldBindJSON(&req) != nil {
+		response.Error(c, 400, "参数错误")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.Phone = strings.TrimSpace(req.Phone)
+	req.AvatarURL = strings.TrimSpace(req.AvatarURL)
+	if req.Name == "" || req.Phone == "" {
 		response.Error(c, 400, "客服名字和电话不能为空")
 		return
 	}
@@ -74,26 +83,115 @@ func SaveDecorationCustomerService(c *gin.Context) {
 }
 
 func GetDecorationCompany(c *gin.Context) {
-	decorationValue(c, decorationCompanyKey, `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`)
+	response.OK(c, decorationCompanyValue())
 }
 func SaveDecorationCompany(c *gin.Context) {
 	var req struct {
-		LogoURL           string   `json:"logoUrl"`
-		Name              string   `json:"name"`
-		Address           string   `json:"address"`
-		Introduction      string   `json:"introduction"`
-		ServiceGuarantees []string `json:"serviceGuarantees"`
-		ContactPhone      string   `json:"contactPhone"`
+		LogoURL           string                `json:"logoUrl"`
+		Name              string                `json:"name"`
+		Address           string                `json:"address"`
+		Introduction      string                `json:"introduction"`
+		ServiceGuarantees []db.ServiceGuarantee `json:"serviceGuarantees"`
+		ContactPhone      string                `json:"contactPhone"`
 	}
-	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.ContactPhone) == "" {
+	if c.ShouldBindJSON(&req) != nil {
+		response.Error(c, 400, "参数错误")
+		return
+	}
+	if req.ServiceGuarantees == nil {
+		req.ServiceGuarantees = []db.ServiceGuarantee{}
+	}
+	req.LogoURL = strings.TrimSpace(req.LogoURL)
+	req.Name = strings.TrimSpace(req.Name)
+	req.Address = strings.TrimSpace(req.Address)
+	req.Introduction = strings.TrimSpace(req.Introduction)
+	req.ContactPhone = strings.TrimSpace(req.ContactPhone)
+	if req.Name == "" || req.ContactPhone == "" {
 		response.Error(c, 400, "公司名字和联系电话不能为空")
 		return
+	}
+	if len(req.ServiceGuarantees) > 12 {
+		response.Error(c, 400, "服务保障最多 12 项")
+		return
+	}
+	for i := range req.ServiceGuarantees {
+		req.ServiceGuarantees[i].Icon = strings.TrimSpace(req.ServiceGuarantees[i].Icon)
+		req.ServiceGuarantees[i].Title = strings.TrimSpace(req.ServiceGuarantees[i].Title)
+		req.ServiceGuarantees[i].Sub = strings.TrimSpace(req.ServiceGuarantees[i].Sub)
+		if req.ServiceGuarantees[i].Icon == "" || req.ServiceGuarantees[i].Title == "" || req.ServiceGuarantees[i].Sub == "" {
+			response.Error(c, 400, "服务保障图标、标题和副标题不能为空")
+			return
+		}
 	}
 	saveDecorationValue(c, decorationCompanyKey, req, "公司信息配置")
 }
 
-func decorationValue(c *gin.Context, key, fallback string) {
-	response.OK(c, jsonValue(db.MustAppConfigJSON(key, fallback), gin.H{}))
+func decorationCompanyValue() gin.H {
+	return companyDecorationValue(db.MustAppConfigJSON(decorationCompanyKey, `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`))
+}
+
+func companyDecorationValue(raw string) gin.H {
+	value := decorationObjectFromJSON(raw, `{"logoUrl":"","name":"永和护理","address":"","introduction":"","serviceGuarantees":[],"contactPhone":""}`)
+	return gin.H{
+		"logoUrl":           decorationString(value["logoUrl"]),
+		"name":              decorationStringDefault(value["name"], "永和护理"),
+		"address":           decorationString(value["address"]),
+		"introduction":      decorationString(value["introduction"]),
+		"serviceGuarantees": db.NormalizeServiceGuarantees(value["serviceGuarantees"]),
+		"contactPhone":      decorationString(value["contactPhone"]),
+	}
+}
+
+func decorationBannersValue() gin.H {
+	value := decorationObject(decorationBannersKey, `{"urls":[]}`)
+	return gin.H{"urls": decorationStringSlice(value["urls"])}
+}
+
+func decorationCustomerServiceValue() gin.H {
+	value := decorationObject(decorationCustomerServiceKey, `{"name":"","phone":"","avatarUrl":""}`)
+	return gin.H{
+		"name":      decorationString(value["name"]),
+		"phone":     decorationString(value["phone"]),
+		"avatarUrl": decorationString(value["avatarUrl"]),
+	}
+}
+
+func decorationObject(key, fallback string) gin.H {
+	return decorationObjectFromJSON(db.MustAppConfigJSON(key, fallback), fallback)
+}
+
+func decorationObjectFromJSON(raw, fallback string) gin.H {
+	value := map[string]interface{}{}
+	if json.Unmarshal([]byte(raw), &value) != nil {
+		_ = json.Unmarshal([]byte(fallback), &value)
+	}
+	return gin.H(value)
+}
+
+func decorationString(value interface{}) string {
+	text, _ := value.(string)
+	return strings.TrimSpace(text)
+}
+
+func decorationStringDefault(value interface{}, fallback string) string {
+	if text := decorationString(value); text != "" {
+		return text
+	}
+	return fallback
+}
+
+func decorationStringSlice(value interface{}) []string {
+	items, ok := value.([]interface{})
+	if !ok {
+		return []string{}
+	}
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if text := decorationString(item); text != "" {
+			result = append(result, text)
+		}
+	}
+	return result
 }
 func saveDecorationValue(c *gin.Context, key string, value interface{}, note string) {
 	if err := db.UpsertAppConfig(key, mustJSON(value, "{}"), note); err != nil {

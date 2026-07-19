@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func GetMiniUserProfile(userID string) (*CustomerDO, error) {
@@ -39,8 +42,12 @@ func UpsertMiniUserProfile(row *CustomerDO) error {
 
 func GetAppConfig(key string) (*AppConfigDO, error) {
 	var row AppConfigDO
-	if err := Get().First(&row, "`key` = ?", key).Error; err != nil {
-		return nil, err
+	result := Get().Where("`key` = ?", key).Limit(1).Find(&row)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 	return &row, nil
 }
@@ -54,8 +61,18 @@ func MustAppConfigJSON(key, fallback string) string {
 }
 
 func UpsertAppConfig(key, value, note string) error {
-	row := &AppConfigDO{Key: key, Value: value, Note: note, UpdatedAt: time.Now()}
-	return Get().Save(row).Error
+	now := time.Now()
+	row := &AppConfigDO{Key: key, Value: value, Note: note, CreatedAt: now, UpdatedAt: now}
+	// Save 会将零值 CreatedAt 写入已有记录；使用冲突更新仅更新可变字段，
+	// 保留原有创建时间，兼容 MySQL 严格日期校验。
+	return Get().Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "key"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"value":      value,
+			"note":       note,
+			"updated_at": now,
+		}),
+	}).Create(row).Error
 }
 
 func MarshalStringSlice(values []string) string {

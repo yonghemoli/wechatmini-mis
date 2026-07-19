@@ -48,16 +48,14 @@ func Session(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, gin.H{
-		"user": gin.H{
-			"id":           sess.AdminID,
-			"username":     sess.Username,
-			"email":        sess.Email,
-			"avatar":       sess.Avatar,
-			"isSuperAdmin": sess.IsSuperAdmin,
-			"roleId":       sess.RoleID,
-		},
-	})
+	admin, err := db.GetAdminByID(sess.AdminID)
+	if err != nil || admin.Status != db.AdminStatusActive {
+		session.Destroy(sid)
+		c.SetCookie(middlewares.SessionCookieName, "", -1, "/", "", false, true)
+		response.FailCode(c, 401, "账号不可用，请重新登录")
+		return
+	}
+	response.OK(c, gin.H{"user": adminPayload(admin)})
 }
 
 func Logout(c *gin.Context) {
@@ -70,14 +68,18 @@ func Logout(c *gin.Context) {
 }
 
 func Me(c *gin.Context) {
-	username, _ := c.Get("username")
-	isSuperAdmin, _ := c.Get("isSuperAdmin")
-	roleID, _ := c.Get("roleID")
-	response.OK(c, gin.H{
-		"username":     username,
-		"isSuperAdmin": isSuperAdmin,
-		"roleId":       roleID,
-	})
+	userID, ok := c.Get("userID")
+	adminID, okID := userID.(uint)
+	if !ok || !okID {
+		response.Error(c, http.StatusUnauthorized, "未登录或会话已过期")
+		return
+	}
+	admin, err := db.GetAdminByID(adminID)
+	if err != nil || admin.Status != db.AdminStatusActive {
+		response.Error(c, http.StatusUnauthorized, "账号不可用，请重新登录")
+		return
+	}
+	response.OK(c, gin.H{"user": adminPayload(admin)})
 }
 
 func ListAccounts(c *gin.Context) {

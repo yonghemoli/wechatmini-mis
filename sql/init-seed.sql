@@ -27,7 +27,7 @@ INSERT INTO app_configs (`key`, value, note, created_at, updated_at)
 VALUES
     ('mini.decoration.banners', '{"urls":[]}', '宣传图配置', NOW(), NOW()),
     ('mini.decoration.customer_service', '{"name":"小禾顾问","phone":"19994740191","avatarUrl":""}', '客服信息配置', NOW(), NOW()),
-    ('mini.decoration.company', '{"logoUrl":"","name":"永和护理","address":"","introduction":"专注家庭护理服务。","serviceGuarantees":["身份核验","健康信息","顾问跟进"],"contactPhone":"19994740191"}', '公司信息配置', NOW(), NOW()),
+    ('mini.decoration.company', '{"logoUrl":"","name":"永和护理","address":"","introduction":"专注家庭护理服务。","serviceGuarantees":[{"icon":"verified","title":"身份核验","sub":"服务人员资料核验"},{"icon":"health","title":"健康信息","sub":"健康资料按授权展示"},{"icon":"support","title":"顾问跟进","sub":"专属顾问全程协助"}],"contactPhone":"19994740191"}', '公司信息配置', NOW(), NOW()),
     ('mini.business.agreement.privacy', '{"title":"隐私政策","version":"1.0","updatedAt":"2026-07-19T00:00:00+08:00","effectiveAt":"2026-07-19T00:00:00+08:00","intro":"","sections":[]}', '隐私政策', NOW(), NOW()),
     ('mini.business.agreement.service', '{"title":"用户服务协议","version":"1.0","updatedAt":"2026-07-19T00:00:00+08:00","effectiveAt":"2026-07-19T00:00:00+08:00","intro":"","sections":[]}', '用户服务协议', NOW(), NOW())
 ON DUPLICATE KEY UPDATE value = VALUES(value), note = VALUES(note), updated_at = NOW();
