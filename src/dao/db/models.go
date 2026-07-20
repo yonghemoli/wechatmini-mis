@@ -129,6 +129,7 @@ type CaregiverDO struct {
 	PersonalInfo           string    `gorm:"type:text;not null;column:personal_info" json:"-"`
 	WorkHistory            string    `gorm:"type:text;not null;column:work_history" json:"-"`
 	PhotoURLs              string    `gorm:"type:text;not null;column:photo_urls" json:"-"`
+	DisplayFields          string    `gorm:"type:text;not null;column:display_fields" json:"-"`
 	Status                 string    `gorm:"size:20;not null;default:'DRAFT';index" json:"status"`
 	Source                 string    `gorm:"size:20;not null;default:'ADMIN';index" json:"source"`
 	Sort                   int       `gorm:"not null;default:0;index" json:"sort"`

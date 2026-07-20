@@ -101,34 +101,35 @@ func GetCaregiver(c *gin.Context) {
 
 func SaveCaregiver(c *gin.Context) {
 	var req struct {
-		ID                     string      `json:"id"`
-		ContactPhone           string      `json:"contactPhone"`
-		AvatarURL              string      `json:"avatarUrl"`
-		Name                   string      `json:"name"`
-		Age                    int         `json:"age"`
-		ExperienceYears        int         `json:"experienceYears"`
-		Origin                 string      `json:"origin"`
-		ServiceIDs             []string    `json:"serviceIds"`
-		Jobs                   []string    `json:"jobs"`
-		AvailabilityStatus     string      `json:"availabilityStatus"`
-		Rating                 float64     `json:"rating"`
-		ServiceCount           int         `json:"serviceCount"`
-		Recommended            bool        `json:"recommended"`
-		Introduction           string      `json:"introduction"`
-		Education              string      `json:"education"`
-		Ethnicity              string      `json:"ethnicity"`
-		Zodiac                 string      `json:"zodiac"`
-		Skills                 []string    `json:"skills"`
-		Certificates           interface{} `json:"certificates"`
-		IdentityVerified       bool        `json:"identityVerified"`
-		PhysicalExamVerified   bool        `json:"physicalExamVerified"`
-		MedicalReportImageURLs []string    `json:"medicalReportImageUrls"`
-		PersonalInfo           interface{} `json:"personalInfo"`
-		WorkHistory            interface{} `json:"workHistory"`
-		PhotoURLs              []string    `json:"photoUrls"`
-		Status                 string      `json:"status"`
-		Source                 string      `json:"source"`
-		Sort                   int         `json:"sort"`
+		ID                     string          `json:"id"`
+		ContactPhone           string          `json:"contactPhone"`
+		AvatarURL              string          `json:"avatarUrl"`
+		Name                   string          `json:"name"`
+		Age                    int             `json:"age"`
+		ExperienceYears        int             `json:"experienceYears"`
+		Origin                 string          `json:"origin"`
+		ServiceIDs             []string        `json:"serviceIds"`
+		Jobs                   []string        `json:"jobs"`
+		AvailabilityStatus     string          `json:"availabilityStatus"`
+		Rating                 float64         `json:"rating"`
+		ServiceCount           int             `json:"serviceCount"`
+		Recommended            bool            `json:"recommended"`
+		Introduction           string          `json:"introduction"`
+		Education              string          `json:"education"`
+		Ethnicity              string          `json:"ethnicity"`
+		Zodiac                 string          `json:"zodiac"`
+		Skills                 []string        `json:"skills"`
+		Certificates           interface{}     `json:"certificates"`
+		IdentityVerified       bool            `json:"identityVerified"`
+		PhysicalExamVerified   bool            `json:"physicalExamVerified"`
+		MedicalReportImageURLs []string        `json:"medicalReportImageUrls"`
+		PersonalInfo           interface{}     `json:"personalInfo"`
+		WorkHistory            interface{}     `json:"workHistory"`
+		PhotoURLs              []string        `json:"photoUrls"`
+		DisplayFields          map[string]bool `json:"displayFields"`
+		Status                 string          `json:"status"`
+		Source                 string          `json:"source"`
+		Sort                   int             `json:"sort"`
 	}
 	if c.ShouldBindJSON(&req) != nil {
 		response.Error(c, 400, "参数错误")
@@ -180,7 +181,7 @@ func SaveCaregiver(c *gin.Context) {
 		ServiceIDs: db.MarshalStringSlice(req.ServiceIDs), Jobs: db.MarshalStringSlice(req.Jobs), AvailabilityStatus: req.AvailabilityStatus, Rating: req.Rating, ServiceCount: req.ServiceCount, Recommended: req.Recommended,
 		Introduction: req.Introduction, Education: req.Education, Ethnicity: req.Ethnicity, Zodiac: req.Zodiac, Skills: db.MarshalStringSlice(req.Skills), Certificates: mustJSON(req.Certificates, "[]"),
 		IdentityVerified: req.IdentityVerified, PhysicalExamVerified: req.PhysicalExamVerified, MedicalReportImageURLs: db.MarshalStringSlice(req.MedicalReportImageURLs), PersonalInfo: mustJSON(req.PersonalInfo, "{}"),
-		WorkHistory: mustJSON(req.WorkHistory, "[]"), PhotoURLs: db.MarshalStringSlice(req.PhotoURLs), Status: status, Source: source, Sort: req.Sort}
+		WorkHistory: mustJSON(req.WorkHistory, "[]"), PhotoURLs: db.MarshalStringSlice(req.PhotoURLs), DisplayFields: mustJSON(req.DisplayFields, "{}"), Status: status, Source: source, Sort: req.Sort}
 	if !row.PhysicalExamVerified {
 		row.MedicalReportImageURLs = "[]"
 	}
@@ -200,7 +201,7 @@ func DeleteCaregiver(c *gin.Context) {
 }
 
 func caregiverAdminView(row db.CaregiverDO) gin.H {
-	return gin.H{"id": row.ID, "applicationId": row.ApplicationID, "contactPhone": row.ContactPhone, "avatarUrl": row.AvatarURL, "name": row.Name, "age": row.Age, "experienceYears": row.ExperienceYears, "origin": row.Origin, "serviceIds": db.UnmarshalStringSlice(row.ServiceIDs), "jobs": db.UnmarshalStringSlice(row.Jobs), "availabilityStatus": row.AvailabilityStatus, "rating": row.Rating, "serviceCount": row.ServiceCount, "recommended": row.Recommended, "introduction": row.Introduction, "education": row.Education, "ethnicity": row.Ethnicity, "zodiac": row.Zodiac, "skills": db.UnmarshalStringSlice(row.Skills), "certificates": jsonValue(row.Certificates, []interface{}{}), "identityVerified": row.IdentityVerified, "physicalExamVerified": row.PhysicalExamVerified, "medicalReportImageUrls": db.UnmarshalStringSlice(row.MedicalReportImageURLs), "personalInfo": jsonValue(row.PersonalInfo, map[string]interface{}{}), "workHistory": jsonValue(row.WorkHistory, []interface{}{}), "photoUrls": db.UnmarshalStringSlice(row.PhotoURLs), "status": row.Status, "source": row.Source, "sort": row.Sort, "createdAt": row.CreatedAt, "updatedAt": row.UpdatedAt}
+	return gin.H{"id": row.ID, "applicationId": row.ApplicationID, "contactPhone": row.ContactPhone, "avatarUrl": row.AvatarURL, "name": row.Name, "age": row.Age, "experienceYears": row.ExperienceYears, "origin": row.Origin, "serviceIds": db.UnmarshalStringSlice(row.ServiceIDs), "jobs": db.UnmarshalStringSlice(row.Jobs), "availabilityStatus": row.AvailabilityStatus, "rating": row.Rating, "serviceCount": row.ServiceCount, "recommended": row.Recommended, "introduction": row.Introduction, "education": row.Education, "ethnicity": row.Ethnicity, "zodiac": row.Zodiac, "skills": db.UnmarshalStringSlice(row.Skills), "certificates": jsonValue(row.Certificates, []interface{}{}), "identityVerified": row.IdentityVerified, "physicalExamVerified": row.PhysicalExamVerified, "medicalReportImageUrls": db.UnmarshalStringSlice(row.MedicalReportImageURLs), "personalInfo": jsonValue(row.PersonalInfo, map[string]interface{}{}), "workHistory": jsonValue(row.WorkHistory, []interface{}{}), "photoUrls": db.UnmarshalStringSlice(row.PhotoURLs), "displayFields": jsonValue(row.DisplayFields, map[string]bool{}), "status": row.Status, "source": row.Source, "sort": row.Sort, "createdAt": row.CreatedAt, "updatedAt": row.UpdatedAt}
 }
 
 func ListDemands(c *gin.Context) {

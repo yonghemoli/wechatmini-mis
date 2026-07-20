@@ -94,36 +94,38 @@ func categoryView(row db.MiniServiceCategoryDO) serviceCategoryView {
 }
 
 type caregiverSummary struct {
-	ID                 string   `json:"id"`
-	AvatarURL          string   `json:"avatarUrl"`
-	Name               string   `json:"name"`
-	Age                int      `json:"age"`
-	ExperienceYears    int      `json:"experienceYears"`
-	ExperienceText     string   `json:"experienceText"`
-	Origin             string   `json:"origin"`
-	ServiceIDs         []string `json:"serviceIds"`
-	Jobs               []string `json:"jobs"`
-	AvailabilityStatus string   `json:"availabilityStatus"`
-	AvailabilityText   string   `json:"availabilityText"`
-	Rating             float64  `json:"rating"`
-	ServiceCount       int      `json:"serviceCount"`
-	Recommended        bool     `json:"recommended"`
+	ID                 string          `json:"id"`
+	AvatarURL          string          `json:"avatarUrl"`
+	Name               string          `json:"name"`
+	Age                int             `json:"age"`
+	ExperienceYears    int             `json:"experienceYears"`
+	ExperienceText     string          `json:"experienceText"`
+	Origin             string          `json:"origin"`
+	ServiceIDs         []string        `json:"serviceIds"`
+	Jobs               []string        `json:"jobs"`
+	AvailabilityStatus string          `json:"availabilityStatus"`
+	AvailabilityText   string          `json:"availabilityText"`
+	Rating             float64         `json:"rating"`
+	ServiceCount       int             `json:"serviceCount"`
+	Recommended        bool            `json:"recommended"`
+	DisplayFields      map[string]bool `json:"displayFields"`
 }
 
 type caregiverDetail struct {
 	caregiverSummary
-	Introduction           string      `json:"introduction"`
-	Education              string      `json:"education"`
-	Ethnicity              string      `json:"ethnicity"`
-	Zodiac                 string      `json:"zodiac,omitempty"`
-	Skills                 []string    `json:"skills"`
-	Certificates           interface{} `json:"certificates"`
-	IdentityVerified       bool        `json:"identityVerified"`
-	PhysicalExamVerified   bool        `json:"physicalExamVerified"`
-	MedicalReportImageURLs []string    `json:"medicalReportImageUrls"`
-	PersonalInfo           interface{} `json:"personalInfo"`
-	WorkHistory            interface{} `json:"workHistory"`
-	PhotoURLs              []string    `json:"photoUrls"`
+	Introduction           string          `json:"introduction"`
+	Education              string          `json:"education"`
+	Ethnicity              string          `json:"ethnicity"`
+	Zodiac                 string          `json:"zodiac,omitempty"`
+	Skills                 []string        `json:"skills"`
+	Certificates           interface{}     `json:"certificates"`
+	IdentityVerified       bool            `json:"identityVerified"`
+	PhysicalExamVerified   bool            `json:"physicalExamVerified"`
+	MedicalReportImageURLs []string        `json:"medicalReportImageUrls"`
+	PersonalInfo           interface{}     `json:"personalInfo"`
+	WorkHistory            interface{}     `json:"workHistory"`
+	PhotoURLs              []string        `json:"photoUrls"`
+	DisplayFields          map[string]bool `json:"displayFields"`
 }
 
 func ListBusinessCaregivers(c *gin.Context) {
@@ -171,7 +173,7 @@ func caregiverSummaryView(row db.CaregiverDO) caregiverSummary {
 	return caregiverSummary{ID: row.ID, AvatarURL: row.AvatarURL, Name: row.Name, Age: row.Age, ExperienceYears: row.ExperienceYears,
 		ExperienceText: fmt.Sprintf("%d年经验", row.ExperienceYears), Origin: row.Origin, ServiceIDs: db.UnmarshalStringSlice(row.ServiceIDs),
 		Jobs: db.UnmarshalStringSlice(row.Jobs), AvailabilityStatus: row.AvailabilityStatus, AvailabilityText: availabilityText[row.AvailabilityStatus],
-		Rating: row.Rating, ServiceCount: row.ServiceCount, Recommended: row.Recommended}
+		Rating: row.Rating, ServiceCount: row.ServiceCount, Recommended: row.Recommended, DisplayFields: displayFields(row.DisplayFields)}
 }
 
 func GetBusinessCaregiver(c *gin.Context) {
@@ -187,7 +189,7 @@ func GetBusinessCaregiver(c *gin.Context) {
 	detail := caregiverDetail{caregiverSummary: caregiverSummaryView(*row), Introduction: row.Introduction, Education: row.Education,
 		Ethnicity: row.Ethnicity, Zodiac: row.Zodiac, Skills: db.UnmarshalStringSlice(row.Skills), Certificates: decodeJSONValue(row.Certificates, []interface{}{}),
 		IdentityVerified: row.IdentityVerified, PhysicalExamVerified: row.PhysicalExamVerified, MedicalReportImageURLs: reports,
-		PersonalInfo: decodeJSONValue(row.PersonalInfo, map[string]interface{}{}), WorkHistory: decodeJSONValue(row.WorkHistory, []interface{}{}), PhotoURLs: db.UnmarshalStringSlice(row.PhotoURLs)}
+		PersonalInfo: decodeJSONValue(row.PersonalInfo, map[string]interface{}{}), WorkHistory: decodeJSONValue(row.WorkHistory, []interface{}{}), PhotoURLs: db.UnmarshalStringSlice(row.PhotoURLs), DisplayFields: displayFields(row.DisplayFields)}
 	businessOK(c, 200, detail)
 }
 
@@ -338,7 +340,7 @@ func CreateBusinessResume(c *gin.Context) {
 		ExperienceYears: time.Now().Year() - req.EntryYear, ServiceIDs: db.MarshalStringSlice([]string{service.ID}),
 		Jobs: db.MarshalStringSlice([]string{service.Name}), AvailabilityStatus: req.WorkStatus,
 		Skills: "[]", Certificates: "[]", MedicalReportImageURLs: "[]", PersonalInfo: encodeJSONValue(gin.H{"contactName": req.ContactName, "contactPhone": req.ContactPhone}, "{}"),
-		WorkHistory: "[]", PhotoURLs: "[]", Status: "DRAFT", Source: "SELF_SUBMITTED",
+		WorkHistory: "[]", PhotoURLs: "[]", DisplayFields: "{}", Status: "DRAFT", Source: "SELF_SUBMITTED",
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := db.CreateResumeAndCaregiverDraft(row, draft); err != nil {
@@ -411,6 +413,12 @@ func encodeJSONValue(value interface{}, fallback string) string {
 		return fallback
 	}
 	return string(raw)
+}
+
+func displayFields(raw string) map[string]bool {
+	fields := map[string]bool{}
+	_ = json.Unmarshal([]byte(raw), &fields)
+	return fields
 }
 func decodeJSONMap(raw string) map[string]interface{} {
 	value := map[string]interface{}{}

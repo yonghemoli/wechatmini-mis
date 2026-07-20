@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS caregivers (
     personal_info TEXT NOT NULL,
     work_history TEXT NOT NULL,
     photo_urls TEXT NOT NULL,
+    display_fields TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
     source VARCHAR(20) NOT NULL DEFAULT 'ADMIN',
     sort INT NOT NULL DEFAULT 0,

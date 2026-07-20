@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS caregivers (
     personal_info TEXT NOT NULL,
     work_history TEXT NOT NULL,
     photo_urls TEXT NOT NULL,
+    display_fields TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
     source VARCHAR(20) NOT NULL DEFAULT 'ADMIN',
     sort INT NOT NULL DEFAULT 0,
@@ -176,7 +177,7 @@ INSERT INTO caregivers
      availability_status, rating, service_count, recommended, introduction,
      education, ethnicity, zodiac, skills, certificates, identity_verified,
      physical_exam_verified, medical_report_image_urls, personal_info,
-     work_history, photo_urls, status, source, sort, created_at, updated_at)
+     work_history, photo_urls, display_fields, status, source, sort, created_at, updated_at)
 VALUES
     (
         'auntie-01',
@@ -195,6 +196,7 @@ VALUES
         '{"heightCm":160,"weightKg":55,"bloodType":"O","gender":"FEMALE","maritalStatus":"MARRIED","religion":"无","languages":["普通话","壮语"],"liveInAvailable":true}',
         '[{"startDate":"2021-03","endDate":null,"periodText":"2021.03—至今","role":"母婴护理师 · 南宁家庭","description":"负责新生儿日常护理、产妇照护及月子餐协助。"},{"startDate":"2018-06","endDate":"2021-02","periodText":"2018.06—2021.02","role":"育儿嫂 · 柳州家庭","description":"负责婴幼儿生活照料、辅食制作和成长陪伴。"}]',
         '["https://cdn.example.com/caregivers/auntie-01-work-01.jpg","https://cdn.example.com/caregivers/auntie-01-work-02.jpg"]',
+        '{}',
         'COMPLETED', 'ADMIN', 100, NOW(), NOW()
     ),
     (
@@ -213,6 +215,7 @@ VALUES
         '{"heightCm":158,"weightKg":53,"bloodType":"A","gender":"FEMALE","maritalStatus":"MARRIED","religion":"无","languages":["普通话","粤语"],"liveInAvailable":false}',
         '[{"startDate":"2019-01","endDate":null,"periodText":"2019.01—至今","role":"家庭服务员 · 南宁家庭","description":"负责家庭保洁、三餐制作和日常收纳。"}]',
         '["https://cdn.example.com/caregivers/auntie-02-work-01.jpg"]',
+        '{}',
         'COMPLETED', 'ADMIN', 90, NOW(), NOW()
     ),
     (
@@ -232,6 +235,7 @@ VALUES
         '{"heightCm":162,"weightKg":58,"bloodType":"B","gender":"FEMALE","maritalStatus":"MARRIED","religion":"无","languages":["普通话","桂柳话"],"liveInAvailable":true}',
         '[{"startDate":"2020-05","endDate":null,"periodText":"2020.05—至今","role":"养老护理员 · 南宁家庭","description":"负责老人日常照护、用药提醒和陪诊。"}]',
         '["https://cdn.example.com/caregivers/auntie-03-work-01.jpg"]',
+        '{}',
         'COMPLETED', 'ADMIN', 80, NOW(), NOW()
     ),
     (
@@ -246,7 +250,7 @@ VALUES
         '["婴幼儿照料"]', '[]',
         FALSE, FALSE, '[]',
         '{"heightCm":159,"weightKg":52,"bloodType":"","gender":"FEMALE","maritalStatus":"MARRIED","religion":"无","languages":["普通话"],"liveInAvailable":false}',
-        '[]', '[]',
+        '[]', '[]', '{}',
         'DRAFT', 'SELF_SUBMITTED', 10, NOW(), NOW()
     )
 ON DUPLICATE KEY UPDATE
@@ -274,6 +278,7 @@ ON DUPLICATE KEY UPDATE
     personal_info = VALUES(personal_info),
     work_history = VALUES(work_history),
     photo_urls = VALUES(photo_urls),
+    display_fields = VALUES(display_fields),
     status = VALUES(status),
     source = VALUES(source),
     sort = VALUES(sort),
