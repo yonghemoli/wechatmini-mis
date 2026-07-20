@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -8,6 +9,40 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// NormalizeJSONObjectList 将历史上被错误存成对象的 JSON 列表恢复为数组。
+// requiredKey 过滤掉表单控制字段等非业务条目，避免再次污染阿姨档案。
+func NormalizeJSONObjectList(value interface{}, requiredKey string) []interface{} {
+	var candidates []interface{}
+	switch typed := value.(type) {
+	case []interface{}:
+		candidates = typed
+	case map[string]interface{}:
+		for _, item := range typed {
+			candidates = append(candidates, item)
+		}
+	case string:
+		var decoded interface{}
+		if json.Unmarshal([]byte(typed), &decoded) != nil {
+			return []interface{}{}
+		}
+		return NormalizeJSONObjectList(decoded, requiredKey)
+	default:
+		return []interface{}{}
+	}
+	result := make([]interface{}, 0, len(candidates))
+	for _, item := range candidates {
+		object, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if value, exists := object[requiredKey]; !exists || strings.TrimSpace(fmt.Sprint(value)) == "" {
+			continue
+		}
+		result = append(result, object)
+	}
+	return result
+}
 
 type CaregiverListQuery struct {
 	ServiceID          string

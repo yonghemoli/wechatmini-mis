@@ -187,9 +187,9 @@ func GetBusinessCaregiver(c *gin.Context) {
 		reports = []string{}
 	}
 	detail := caregiverDetail{caregiverSummary: caregiverSummaryView(*row), Introduction: row.Introduction, Education: row.Education,
-		Ethnicity: row.Ethnicity, Zodiac: row.Zodiac, Skills: db.UnmarshalStringSlice(row.Skills), Certificates: decodeJSONValue(row.Certificates, []interface{}{}),
+		Ethnicity: row.Ethnicity, Zodiac: row.Zodiac, Skills: db.UnmarshalStringSlice(row.Skills), Certificates: db.NormalizeJSONObjectList(decodeJSONValue(row.Certificates, []interface{}{}), "name"),
 		IdentityVerified: row.IdentityVerified, PhysicalExamVerified: row.PhysicalExamVerified, MedicalReportImageURLs: reports,
-		PersonalInfo: decodeJSONValue(row.PersonalInfo, map[string]interface{}{}), WorkHistory: decodeJSONValue(row.WorkHistory, []interface{}{}), PhotoURLs: db.UnmarshalStringSlice(row.PhotoURLs), DisplayFields: displayFields(row.DisplayFields)}
+		PersonalInfo: decodeJSONValue(row.PersonalInfo, map[string]interface{}{}), WorkHistory: db.NormalizeJSONObjectList(decodeJSONValue(row.WorkHistory, []interface{}{}), "role"), PhotoURLs: db.UnmarshalStringSlice(row.PhotoURLs), DisplayFields: displayFields(row.DisplayFields)}
 	businessOK(c, 200, detail)
 }
 
