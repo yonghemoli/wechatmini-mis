@@ -1,9 +1,11 @@
 package settings
 
 import (
+	"bufio"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,6 +25,7 @@ type AppConfig struct {
 	DB         *DatabaseConfig   `json:"database"`
 	MiniWechat *MiniWechatConfig `json:"mini_wechat"`
 	MiniSMS    *MiniSMSConfig    `json:"mini_sms"`
+	OSS        *OSSConfig        `json:"oss"`
 }
 
 type ServerConfig struct {
@@ -58,8 +61,19 @@ type MiniSMSConfig struct {
 	TestCode string `json:"test_code"`
 }
 
+// OSSConfig 与 oss-admin 使用同一套 MinIO/S3 兼容存储配置。
+type OSSConfig struct {
+	Endpoint      string `json:"endpoint"`
+	AccessKey     string `json:"access_key"`
+	SecretKey     string `json:"secret_key"`
+	UseSSL        bool   `json:"use_ssl"`
+	Bucket        string `json:"bucket"`
+	PublicBaseURL string `json:"public_base_url"`
+}
+
 func Init() error {
 	log.Println("=== 永和茉莉 系统配置初始化 ===")
+	loadDotEnv(".env")
 
 	Conf.Name = getEnv("MIS_NAME", ServiceName)
 	Conf.Mode = getEnv("MIS_MODE", "release")
@@ -94,6 +108,14 @@ func Init() error {
 		Token:    getEnv("MIS_MINI_SMS_TOKEN", ""),
 		TestCode: getEnv("MIS_MINI_SMS_TEST_CODE", ""),
 	}
+	Conf.OSS = &OSSConfig{
+		Endpoint:      getEnv("MIS_OSS_ENDPOINT", getEnv("MINIO_ENDPOINT", "")),
+		AccessKey:     getEnv("MIS_OSS_ACCESS_KEY", getEnv("MINIO_ACCESS_KEY", "")),
+		SecretKey:     getEnv("MIS_OSS_SECRET_KEY", getEnv("MINIO_SECRET_KEY", "")),
+		UseSSL:        getEnvAsBool("MIS_OSS_USE_SSL", getEnvAsBool("MINIO_USE_SSL", false)),
+		Bucket:        getEnv("MIS_OSS_BUCKET", getEnv("MINIO_BUCKET", "oss-ui")),
+		PublicBaseURL: getEnv("MIS_OSS_PUBLIC_BASE_URL", getEnv("MINIO_PUBLIC_BASE_URL", "")),
+	}
 
 	log.Printf("应用名称: %s", Conf.Name)
 	log.Printf("运行模式: %s", Conf.Mode)
@@ -103,6 +125,31 @@ func Init() error {
 
 	log.Println("=== 配置加载完成 ===")
 	return nil
+}
+
+// loadDotEnv 方便本地直接 go run；线上容器环境变量优先，不会被 .env 覆盖。
+func loadDotEnv(path string) {
+	file, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+		if key != "" && os.Getenv(key) == "" {
+			_ = os.Setenv(key, value)
+		}
+	}
 }
 
 func getEnv(key, defaultValue string) string {

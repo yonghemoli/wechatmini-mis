@@ -4,6 +4,7 @@ import (
 	"yonghemolimis/src/dao/db"
 	"yonghemolimis/src/logger"
 	"yonghemolimis/src/middlewares"
+	"yonghemolimis/src/pkgs/oss"
 	"yonghemolimis/src/route"
 	"yonghemolimis/src/settings"
 
@@ -22,6 +23,12 @@ func main() {
 	if err := db.Init(); err != nil {
 		logger.Errorf("数据库初始化失败: %v", err)
 		panic("数据库初始化失败: " + err.Error())
+	}
+	if err := oss.Init(&oss.Config{
+		Endpoint: settings.Conf.OSS.Endpoint, AccessKey: settings.Conf.OSS.AccessKey, SecretKey: settings.Conf.OSS.SecretKey,
+		UseSSL: settings.Conf.OSS.UseSSL, Bucket: settings.Conf.OSS.Bucket, PublicBaseURL: settings.Conf.OSS.PublicBaseURL,
+	}); err != nil {
+		logger.Warnf("OSS 初始化失败，上传功能不可用: %v", err)
 	}
 
 	// 4. 设置 Gin

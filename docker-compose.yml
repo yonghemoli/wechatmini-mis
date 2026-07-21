@@ -25,6 +25,13 @@ services:
       - MIS_DB_DRIVER=mysql
       - MIS_DB_DSN=${MIS_DB_DSN:-root:password@tcp(127.0.0.1:3306)/yonghemolimis?charset=utf8mb4&parseTime=True&loc=Local}
       - MIS_DB_AUTO_MIGRATE=${MIS_DB_AUTO_MIGRATE:-false}
+      # MinIO 配置
+      - MIS_OSS_ENDPOINT=oss-files.alemonjs.com
+      - MIS_OSS_ACCESS_KEY=lemonade
+      - MIS_OSS_SECRET_KEY=lemonade
+      - MIS_OSS_USE_SSL=true
+      - MIS_OSS_BUCKET=oss-ui
+      - MIS_OSS_PUBLIC_BASE_URL=https://yonghemoli.com/images-proxy
     ports:
       - "15980:8080"
     volumes:

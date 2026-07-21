@@ -35,6 +35,8 @@ func SetupRoutes(r *gin.Engine) {
 		auth.POST("/admin/accounts/:id/reset-password", user.ResetAccountPassword)
 		auth.POST("/admin/accounts/:id/disable", user.DisableAccount)
 		auth.POST("/admin/accounts/:id/enable", user.EnableAccount)
+		auth.POST("/uploads/image", misapi.UploadImage)
+		auth.POST("/uploads/file", misapi.UploadFile)
 
 		auth.GET("/users", misapi.ListUsers)
 		auth.GET("/users/export", misapi.ExportUsers)
