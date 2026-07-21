@@ -68,6 +68,16 @@ MIS_MINI_SMS_TOKEN=your-token
 
 仅非 `release` 环境可使用 `MIS_MINI_SMS_TEST_CODE=123456` 联调。
 
+## 抖音小程序登录配置
+
+```text
+MIS_MINI_DOUYIN_APPID=ttxxxxxxxxxxxxxxxx
+MIS_MINI_DOUYIN_SECRET=从抖音开放平台开发配置获取
+MIS_MINI_DOUYIN_PHONE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\\n...\\n-----END RSA PRIVATE KEY-----"
+```
+
+首次授权会要求用户通过 `getPhoneNumber` 绑定手机号；请先在抖音开放平台为该小程序申请“获取用户手机号”能力，并在“开发配置 > 应用公钥”上传与此私钥匹配的公钥。
+
 ## 验证
 
 ```sh

@@ -25,6 +25,14 @@ func GetMiniUserByOpenID(openID string) (*CustomerDO, error) {
 	return &row, nil
 }
 
+func GetMiniUserByDouyinOpenID(openID string) (*CustomerDO, error) {
+	var row CustomerDO
+	if err := Get().First(&row, "douyin_openid = ?", openID).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 func GetMiniUserByPhone(phone string) (*CustomerDO, error) {
 	var row CustomerDO
 	if err := Get().First(&row, "phone = ?", phone).Error; err != nil {

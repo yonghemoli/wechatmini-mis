@@ -29,6 +29,8 @@ type User struct {
 
 func RegisterRoutes(r gin.IRouter) {
 	r.POST("/auth/wechat-login", WechatLogin)
+	r.POST("/auth/douyin-login", DouyinLogin)
+	r.POST("/auth/douyin-phone-login", DouyinPhoneLogin)
 	r.POST("/auth/phone-code", PhoneCode)
 	r.POST("/auth/phone-login", PhoneLogin)
 	r.GET("/users/me", BusinessUserMe)
@@ -111,6 +113,79 @@ func WechatLogin(c *gin.Context) {
 	row, err := ensureMiniUser(wxSession.OpenID, req.NickName, req.AvatarURL, phone)
 	if err != nil {
 		businessFail(c, 409, 40900, "该手机号或微信账号已绑定其他用户")
+		return
+	}
+	loginSuccess(c, row)
+}
+
+// DouyinLogin 使用 tt.login 返回的 code 建立抖音身份。已绑定手机号的用户
+// 直接登录；首次用户则返回短时 authToken，供手机号组件回调继续完成绑定。
+func DouyinLogin(c *gin.Context) {
+	var req struct {
+		Code      string `json:"code"`
+		NickName  string `json:"nickName"`
+		AvatarURL string `json:"avatarUrl"`
+	}
+	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.Code) == "" {
+		businessFail(c, 400, 40000, "抖音登录凭证不能为空")
+		return
+	}
+	session, err := douyinCodeToSession(req.Code)
+	if err != nil {
+		businessFail(c, 400, 40002, "抖音登录凭证错误、已失效或服务未配置")
+		return
+	}
+	if row, err := db.GetMiniUserByDouyinOpenID(session.Data.OpenID); err == nil {
+		if row.Status != db.CustomerStatusActive {
+			businessFail(c, 403, 40300, "账号已被禁用")
+			return
+		}
+		row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
+		row.UpdatedAt = time.Now()
+		if err := db.UpsertMiniUserProfile(row); err != nil {
+			businessFail(c, 500, 50000, "登录失败")
+			return
+		}
+		loginSuccess(c, row)
+		return
+	}
+	businessOK(c, http.StatusOK, gin.H{
+		"needPhoneAuth": true,
+		"authToken":     createDouyinPendingToken(session.Data.OpenID, session.Data.SessionKey),
+	})
+}
+
+// DouyinPhoneLogin 解密 getPhoneNumber 回调中的手机号并绑定抖音 openid。
+// 不能在这里重新 tt.login，否则 session_key 会变化，导致解密失败。
+func DouyinPhoneLogin(c *gin.Context) {
+	var req struct {
+		AuthToken     string `json:"authToken"`
+		PhoneCode     string `json:"phoneCode"`
+		EncryptedData string `json:"encryptedData"`
+		IV            string `json:"iv"`
+		NickName      string `json:"nickName"`
+		AvatarURL     string `json:"avatarUrl"`
+	}
+	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.AuthToken) == "" || (strings.TrimSpace(req.PhoneCode) == "" && (strings.TrimSpace(req.EncryptedData) == "" || strings.TrimSpace(req.IV) == "")) {
+		businessFail(c, 400, 40000, "手机号授权参数不完整")
+		return
+	}
+	pending, ok := consumeDouyinPendingToken(req.AuthToken)
+	if !ok {
+		businessFail(c, 400, 40002, "手机号授权已失效，请重新进行抖音登录")
+		return
+	}
+	phone, err := douyinPhoneNumberByCode(req.PhoneCode)
+	if strings.TrimSpace(req.PhoneCode) == "" {
+		phone, err = decryptDouyinPhone(pending.SessionKey, req.EncryptedData, req.IV)
+	}
+	if err != nil || !mainlandPhonePattern.MatchString(phone) {
+		businessFail(c, 400, 40002, "抖音手机号授权失败")
+		return
+	}
+	row, err := ensureMiniUserByDouyin(pending.OpenID, req.NickName, req.AvatarURL, phone)
+	if err != nil {
+		businessFail(c, 409, 40900, "该手机号或抖音账号已绑定其他用户")
 		return
 	}
 	loginSuccess(c, row)
@@ -202,6 +277,35 @@ func ensureMiniUser(openID, nickName, avatarURL, phone string) (*db.CustomerDO, 
 		row.Avatar = avatarURL
 	}
 	row.Phone = phone
+	row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
+	row.UpdatedAt = time.Now()
+	return row, db.UpsertMiniUserProfile(row)
+}
+
+func ensureMiniUserByDouyin(openID, nickName, avatarURL, phone string) (*db.CustomerDO, error) {
+	if strings.TrimSpace(phone) == "" || strings.TrimSpace(openID) == "" {
+		return nil, fmt.Errorf("douyin openid and phone required")
+	}
+	if row, err := db.GetMiniUserByDouyinOpenID(openID); err == nil {
+		if row.Phone != phone {
+			return nil, fmt.Errorf("douyin account already bound")
+		}
+		return row, nil
+	}
+	row, err := db.GetMiniUserByPhone(phone)
+	if err != nil {
+		row = &db.CustomerDO{ID: newMiniUserID(), Phone: phone, Nickname: maskPhone(phone), Status: db.CustomerStatusActive, CreatedAt: time.Now()}
+	}
+	if row.DouyinOpenID != "" && row.DouyinOpenID != openID {
+		return nil, fmt.Errorf("phone already bound")
+	}
+	row.DouyinOpenID = openID
+	if strings.TrimSpace(nickName) != "" {
+		row.Nickname = strings.TrimSpace(nickName)
+	}
+	if strings.TrimSpace(avatarURL) != "" {
+		row.Avatar = strings.TrimSpace(avatarURL)
+	}
 	row.LastLoginAt = time.Now().Format("2006-01-02 15:04:05")
 	row.UpdatedAt = time.Now()
 	return row, db.UpsertMiniUserProfile(row)

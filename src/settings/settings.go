@@ -24,6 +24,7 @@ type AppConfig struct {
 	Log        *LogConfig        `json:"log"`
 	DB         *DatabaseConfig   `json:"database"`
 	MiniWechat *MiniWechatConfig `json:"mini_wechat"`
+	MiniDouyin *MiniDouyinConfig `json:"mini_douyin"`
 	MiniSMS    *MiniSMSConfig    `json:"mini_sms"`
 	OSS        *OSSConfig        `json:"oss"`
 }
@@ -51,6 +52,14 @@ type DatabaseConfig struct {
 type MiniWechatConfig struct {
 	AppID     string `json:"app_id"`
 	AppSecret string `json:"app_secret"`
+}
+
+// MiniDouyinConfig 是抖音小程序服务端登录所需的凭据。AppSecret 只能放在
+// 服务端环境变量中，绝不能打进小程序包。
+type MiniDouyinConfig struct {
+	AppID              string `json:"app_id"`
+	AppSecret          string `json:"app_secret"`
+	PhonePrivateKeyPEM string `json:"phone_private_key_pem"`
 }
 
 // MiniSMSConfig 使用通用 HTTP JSON 网关发送验证码。网关接收
@@ -102,6 +111,11 @@ func Init() error {
 	Conf.MiniWechat = &MiniWechatConfig{
 		AppID:     getEnv("MIS_MINI_WECHAT_APPID", ""),
 		AppSecret: getEnv("MIS_MINI_WECHAT_SECRET", ""),
+	}
+	Conf.MiniDouyin = &MiniDouyinConfig{
+		AppID:              getEnv("MIS_MINI_DOUYIN_APPID", ""),
+		AppSecret:          getEnv("MIS_MINI_DOUYIN_SECRET", ""),
+		PhonePrivateKeyPEM: strings.ReplaceAll(getEnv("MIS_MINI_DOUYIN_PHONE_PRIVATE_KEY", ""), `\n`, "\n"),
 	}
 	Conf.MiniSMS = &MiniSMSConfig{
 		Endpoint: getEnv("MIS_MINI_SMS_ENDPOINT", ""),

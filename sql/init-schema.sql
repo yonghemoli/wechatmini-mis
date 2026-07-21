@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS admins (
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(32) NOT NULL,
     openid VARCHAR(128) DEFAULT NULL,
+    douyin_openid VARCHAR(128) DEFAULT NULL,
     avatar VARCHAR(512) NOT NULL DEFAULT '',
     nickname VARCHAR(64) NOT NULL,
     phone VARCHAR(32) NOT NULL,
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY idx_users_openid (openid),
+    UNIQUE KEY idx_users_douyin_openid (douyin_openid),
     UNIQUE KEY idx_users_phone (phone),
     KEY idx_users_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
