@@ -147,13 +147,8 @@ func SaveCaregiver(c *gin.Context) {
 	}
 	certificates := db.NormalizeJSONObjectList(req.Certificates, "name")
 	workHistory := db.NormalizeJSONObjectList(req.WorkHistory, "role")
+	// 联系方式只保留在顶层 ContactPhone（MIS 专用），不允许混入会下发给小程序的 personalInfo。
 	personalInfo := db.SanitizeCaregiverPersonalInfo(req.PersonalInfo)
-	publicText := []string{req.Name, req.Origin, req.Introduction, req.Education, req.Ethnicity, req.Zodiac, req.Constellation}
-	if db.ContainsPhoneInPublicContent(publicText) || db.ContainsPhoneInPublicContent(req.Jobs) || db.ContainsPhoneInPublicContent(req.Skills) ||
-		db.ContainsPhoneInPublicContent(certificates) || db.ContainsPhoneInPublicContent(workHistory) || db.ContainsPhoneInPublicContent(personalInfo) {
-		response.Error(c, 400, "公开简历不能包含手机号，请通过平台客服处理联系事宜")
-		return
-	}
 	// 创建档案时由服务端生成 ID 且固定为草稿；发布状态只能通过专用接口变更。
 	if id := strings.TrimSpace(c.Param("id")); id != "" {
 		req.ID = id

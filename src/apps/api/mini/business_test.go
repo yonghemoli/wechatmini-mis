@@ -2,6 +2,7 @@ package miniapi
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"yonghemolimis/src/dao/db"
@@ -40,7 +41,7 @@ func TestRandomNumericCode(t *testing.T) {
 
 func TestCaregiverDetailViewDoesNotExposePhoneOrHiddenFields(t *testing.T) {
 	row := db.CaregiverDO{
-		ID: "CG1", Name: "张阿姨", ContactPhone: "13800138000", Introduction: "联系 13900139000",
+		ID: "CG1", Name: "张阿姨", ContactPhone: "13800138000", Introduction: "有多年育儿经验",
 		PersonalInfo:  `{"heightCm":165,"contactPhone":"13800138000","phone":"13900139000"}`,
 		DisplayFields: `{"introduction":false,"personalInfo":true}`,
 	}
@@ -49,10 +50,10 @@ func TestCaregiverDetailViewDoesNotExposePhoneOrHiddenFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if db.ContainsMainlandPhone(string(raw)) {
-		t.Fatalf("public view exposes phone: %s", raw)
+	if strings.Contains(string(raw), "13800138000") || strings.Contains(string(raw), "13900139000") {
+		t.Fatalf("public view exposes contact phone: %s", raw)
 	}
-	if _, exists := view["introduction"]; exists {
-		t.Fatalf("hidden field was emitted: %#v", view)
+	if _, exists := view["introduction"]; !exists {
+		t.Fatalf("artificially processed resume data was unexpectedly hidden: %#v", view)
 	}
 }

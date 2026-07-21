@@ -136,22 +136,14 @@ func ListBusinessCaregivers(c *gin.Context) {
 
 func caregiverSummaryView(row db.CaregiverDO) gin.H {
 	fields := displayFields(row.DisplayFields)
-	view := gin.H{"id": row.ID, "recommended": row.Recommended, "displayFields": fields}
-	setPublicField(view, fields, "avatarUrl", row.AvatarURL)
-	setPublicField(view, fields, "name", row.Name)
-	setPublicField(view, fields, "age", row.Age)
-	if isPublicField(fields, "experienceYears") {
-		view["experienceYears"] = row.ExperienceYears
-		view["experienceText"] = fmt.Sprintf("%d年经验", row.ExperienceYears)
+	// displayFields 是小程序的展示控制，不作为数据访问权限；人工维护的简历数据仍完整下发。
+	return gin.H{
+		"id": row.ID, "avatarUrl": row.AvatarURL, "name": row.Name, "age": row.Age,
+		"experienceYears": row.ExperienceYears, "experienceText": fmt.Sprintf("%d年经验", row.ExperienceYears),
+		"origin": row.Origin, "serviceIds": db.UnmarshalStringSlice(row.ServiceIDs), "jobs": db.UnmarshalStringSlice(row.Jobs),
+		"availabilityStatus": row.AvailabilityStatus, "availabilityText": availabilityText[row.AvailabilityStatus],
+		"recommended": row.Recommended, "displayFields": fields,
 	}
-	setPublicField(view, fields, "origin", row.Origin)
-	setPublicField(view, fields, "serviceIds", db.UnmarshalStringSlice(row.ServiceIDs))
-	setPublicField(view, fields, "jobs", db.UnmarshalStringSlice(row.Jobs))
-	if isPublicField(fields, "availabilityStatus") {
-		view["availabilityStatus"] = row.AvailabilityStatus
-		view["availabilityText"] = availabilityText[row.AvailabilityStatus]
-	}
-	return view
 }
 
 func GetBusinessCaregiver(c *gin.Context) {
@@ -168,31 +160,22 @@ func caregiverDetailView(row db.CaregiverDO) gin.H {
 	if !row.PhysicalExamVerified {
 		reports = []string{}
 	}
-	fields := displayFields(row.DisplayFields)
 	detail := caregiverSummaryView(row)
-	setPublicField(detail, fields, "introduction", row.Introduction)
-	setPublicField(detail, fields, "education", row.Education)
-	setPublicField(detail, fields, "ethnicity", row.Ethnicity)
-	setPublicField(detail, fields, "zodiac", row.Zodiac)
-	setPublicField(detail, fields, "birthDate", row.BirthDate)
-	setPublicField(detail, fields, "constellation", row.Constellation)
-	setPublicField(detail, fields, "skills", db.UnmarshalStringSlice(row.Skills))
-	setPublicField(detail, fields, "certificates", db.NormalizeJSONObjectList(decodeJSONValue(row.Certificates, []interface{}{}), "name"))
-	setPublicField(detail, fields, "identityVerified", row.IdentityVerified)
-	setPublicField(detail, fields, "physicalExamVerified", row.PhysicalExamVerified)
-	setPublicField(detail, fields, "medicalReportImageUrls", reports)
-	setPublicField(detail, fields, "personalInfo", db.SanitizeCaregiverPersonalInfo(decodeJSONValue(row.PersonalInfo, map[string]interface{}{})))
-	setPublicField(detail, fields, "workHistory", db.NormalizeJSONObjectList(decodeJSONValue(row.WorkHistory, []interface{}{}), "role"))
-	setPublicField(detail, fields, "photoUrls", db.UnmarshalStringSlice(row.PhotoURLs))
+	detail["introduction"] = row.Introduction
+	detail["education"] = row.Education
+	detail["ethnicity"] = row.Ethnicity
+	detail["zodiac"] = row.Zodiac
+	detail["birthDate"] = row.BirthDate
+	detail["constellation"] = row.Constellation
+	detail["skills"] = db.UnmarshalStringSlice(row.Skills)
+	detail["certificates"] = db.NormalizeJSONObjectList(decodeJSONValue(row.Certificates, []interface{}{}), "name")
+	detail["identityVerified"] = row.IdentityVerified
+	detail["physicalExamVerified"] = row.PhysicalExamVerified
+	detail["medicalReportImageUrls"] = reports
+	detail["personalInfo"] = db.SanitizeCaregiverPersonalInfo(decodeJSONValue(row.PersonalInfo, map[string]interface{}{}))
+	detail["workHistory"] = db.NormalizeJSONObjectList(decodeJSONValue(row.WorkHistory, []interface{}{}), "role")
+	detail["photoUrls"] = db.UnmarshalStringSlice(row.PhotoURLs)
 	return detail
-}
-
-func isPublicField(fields map[string]bool, field string) bool { return fields[field] != false }
-
-func setPublicField(target gin.H, fields map[string]bool, field string, value interface{}) {
-	if isPublicField(fields, field) {
-		target[field] = value
-	}
 }
 
 func CreateBusinessDemand(c *gin.Context) {

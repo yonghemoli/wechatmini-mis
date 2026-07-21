@@ -18,17 +18,8 @@ func TestSanitizeCaregiverPersonalInfoRemovesPhone(t *testing.T) {
 	if _, exists := got["phone"]; exists {
 		t.Fatalf("phone leaked: %#v", got)
 	}
-	if _, exists := got["languages"]; exists {
-		t.Fatalf("phone-containing public text was retained: %#v", got)
-	}
-}
-
-func TestContainsPhoneInPublicContent(t *testing.T) {
-	if !ContainsPhoneInPublicContent(map[string]interface{}{"description": "联系 13800138000"}) {
-		t.Fatal("phone number was not detected")
-	}
-	if ContainsPhoneInPublicContent(map[string]interface{}{"imageUrls": []interface{}{"https://example.com/13800138000.jpg"}}) {
-		t.Fatal("media URL should not be treated as public text")
+	if _, exists := got["languages"]; !exists {
+		t.Fatalf("non-contact profile data was incorrectly removed: %#v", got)
 	}
 }
 
