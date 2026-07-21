@@ -121,6 +121,8 @@ type CaregiverDO struct {
 	Education              string    `gorm:"size:64;not null;default:''" json:"education"`
 	Ethnicity              string    `gorm:"size:64;not null;default:''" json:"ethnicity"`
 	Zodiac                 string    `gorm:"size:32;not null;default:''" json:"zodiac"`
+	BirthDate              string    `gorm:"size:10;not null;default:'';column:birth_date" json:"birthDate"`
+	Constellation          string    `gorm:"size:32;not null;default:''" json:"constellation"`
 	Skills                 string    `gorm:"type:text;not null" json:"-"`
 	Certificates           string    `gorm:"type:text;not null" json:"-"`
 	IdentityVerified       bool      `gorm:"not null;default:false;column:identity_verified" json:"identityVerified"`

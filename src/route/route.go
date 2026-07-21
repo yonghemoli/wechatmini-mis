@@ -61,6 +61,7 @@ func SetupRoutes(r *gin.Engine) {
 		auth.GET("/caregivers/:id", misapi.GetCaregiver)
 		auth.POST("/caregivers", misapi.SaveCaregiver)
 		auth.PUT("/caregivers/:id", misapi.SaveCaregiver)
+		auth.PUT("/caregivers/:id/status", misapi.UpdateCaregiverStatus)
 		auth.DELETE("/caregivers/:id", misapi.DeleteCaregiver)
 		auth.GET("/caregiver-applications", misapi.ListResumes)
 		auth.PUT("/caregiver-applications/:id/status", misapi.UpdateResumeStatus)

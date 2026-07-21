@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 
 	"yonghemolimis/src/apps/api/response"
 	"yonghemolimis/src/dao/db"
@@ -118,6 +119,8 @@ func SaveCaregiver(c *gin.Context) {
 		Education              string          `json:"education"`
 		Ethnicity              string          `json:"ethnicity"`
 		Zodiac                 string          `json:"zodiac"`
+		BirthDate              string          `json:"birthDate"`
+		Constellation          string          `json:"constellation"`
 		Skills                 []string        `json:"skills"`
 		Certificates           interface{}     `json:"certificates"`
 		IdentityVerified       bool            `json:"identityVerified"`
@@ -135,8 +138,18 @@ func SaveCaregiver(c *gin.Context) {
 		response.Error(c, 400, "参数错误")
 		return
 	}
+	req.BirthDate = strings.TrimSpace(req.BirthDate)
+	if req.BirthDate != "" {
+		if _, err := time.Parse("2006-01-02", req.BirthDate); err != nil {
+			response.Error(c, 400, "出生日期格式应为 YYYY-MM-DD")
+			return
+		}
+	}
+	// 创建档案时由服务端生成 ID 且固定为草稿；发布状态只能通过专用接口变更。
 	if id := strings.TrimSpace(c.Param("id")); id != "" {
 		req.ID = id
+	} else {
+		req.ID = ""
 	}
 	if req.Rating < 0 || req.Rating > 5 || req.Age < 0 || req.Age > 70 {
 		response.Error(c, 400, "年龄或评分不符合要求")
@@ -148,21 +161,6 @@ func SaveCaregiver(c *gin.Context) {
 			return
 		}
 	}
-	status := strings.ToUpper(strings.TrimSpace(req.Status))
-	if status == "" {
-		status = "DRAFT"
-	}
-	if status != "DRAFT" && status != "COMPLETED" {
-		response.Error(c, 400, "status 仅支持 DRAFT 或 COMPLETED")
-		return
-	}
-	if status == "COMPLETED" && (strings.TrimSpace(req.Name) == "" || req.Age < 18 || len(req.ServiceIDs) == 0) {
-		response.Error(c, 400, "完成状态必须填写姓名、有效年龄和至少一个服务项目")
-		return
-	}
-	if strings.TrimSpace(req.Name) == "" {
-		req.Name = "待完善资料"
-	}
 	source := strings.ToUpper(strings.TrimSpace(req.Source))
 	if source == "" {
 		source = "ADMIN"
@@ -171,15 +169,27 @@ func SaveCaregiver(c *gin.Context) {
 		response.Error(c, 400, "source 仅支持 ADMIN 或 SELF_SUBMITTED")
 		return
 	}
+	status := "DRAFT"
 	applicationID := ""
 	if req.ID != "" {
-		if existing, err := db.GetCaregiver(req.ID, false); err == nil {
-			applicationID = existing.ApplicationID
+		existing, err := db.GetCaregiver(req.ID, false)
+		if err != nil {
+			response.Error(c, 404, "服务人员不存在")
+			return
 		}
+		applicationID = existing.ApplicationID
+		status = existing.Status
+	}
+	if status == "COMPLETED" && (strings.TrimSpace(req.Name) == "" || req.Age < 18 || len(req.ServiceIDs) == 0) {
+		response.Error(c, 400, "已发布档案必须填写姓名、有效年龄和至少一个服务项目")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		req.Name = "待完善资料"
 	}
 	row := &db.CaregiverDO{ID: req.ID, ApplicationID: applicationID, ContactPhone: strings.TrimSpace(req.ContactPhone), AvatarURL: req.AvatarURL, Name: strings.TrimSpace(req.Name), Age: req.Age, ExperienceYears: req.ExperienceYears, Origin: req.Origin,
 		ServiceIDs: db.MarshalStringSlice(req.ServiceIDs), Jobs: db.MarshalStringSlice(req.Jobs), AvailabilityStatus: req.AvailabilityStatus, Rating: req.Rating, ServiceCount: req.ServiceCount, Recommended: req.Recommended,
-		Introduction: req.Introduction, Education: req.Education, Ethnicity: req.Ethnicity, Zodiac: req.Zodiac, Skills: db.MarshalStringSlice(req.Skills), Certificates: mustJSON(db.NormalizeJSONObjectList(req.Certificates, "name"), "[]"),
+		Introduction: req.Introduction, Education: req.Education, Ethnicity: req.Ethnicity, Zodiac: req.Zodiac, BirthDate: req.BirthDate, Constellation: req.Constellation, Skills: db.MarshalStringSlice(req.Skills), Certificates: mustJSON(db.NormalizeJSONObjectList(req.Certificates, "name"), "[]"),
 		IdentityVerified: req.IdentityVerified, PhysicalExamVerified: req.PhysicalExamVerified, MedicalReportImageURLs: db.MarshalStringSlice(req.MedicalReportImageURLs), PersonalInfo: mustJSON(req.PersonalInfo, "{}"),
 		WorkHistory: mustJSON(db.NormalizeJSONObjectList(req.WorkHistory, "role"), "[]"), PhotoURLs: db.MarshalStringSlice(req.PhotoURLs), DisplayFields: mustJSON(req.DisplayFields, "{}"), Status: status, Source: source, Sort: req.Sort}
 	if !row.PhysicalExamVerified {
@@ -200,8 +210,37 @@ func DeleteCaregiver(c *gin.Context) {
 	response.OKMsg(c, "服务人员已删除")
 }
 
+func UpdateCaregiverStatus(c *gin.Context) {
+	var req struct {
+		Status string `json:"status"`
+	}
+	if c.ShouldBindJSON(&req) != nil {
+		response.Error(c, 400, "参数错误")
+		return
+	}
+	status := strings.ToUpper(strings.TrimSpace(req.Status))
+	if status != "DRAFT" && status != "COMPLETED" {
+		response.Error(c, 400, "status 仅支持 DRAFT 或 COMPLETED")
+		return
+	}
+	row, err := db.GetCaregiver(c.Param("id"), false)
+	if err != nil {
+		response.Error(c, 404, "服务人员不存在")
+		return
+	}
+	if status == "COMPLETED" && (strings.TrimSpace(row.Name) == "" || row.Age < 18 || len(db.UnmarshalStringSlice(row.ServiceIDs)) == 0) {
+		response.Error(c, 400, "发布前须填写姓名、有效年龄和至少一个服务项目")
+		return
+	}
+	if err := db.UpdateCaregiverStatus(row.ID, status); err != nil {
+		response.Error(c, 500, "更新档案状态失败")
+		return
+	}
+	response.OKMsg(c, "档案状态已更新")
+}
+
 func caregiverAdminView(row db.CaregiverDO) gin.H {
-	return gin.H{"id": row.ID, "applicationId": row.ApplicationID, "contactPhone": row.ContactPhone, "avatarUrl": row.AvatarURL, "name": row.Name, "age": row.Age, "experienceYears": row.ExperienceYears, "origin": row.Origin, "serviceIds": db.UnmarshalStringSlice(row.ServiceIDs), "jobs": db.UnmarshalStringSlice(row.Jobs), "availabilityStatus": row.AvailabilityStatus, "rating": row.Rating, "serviceCount": row.ServiceCount, "recommended": row.Recommended, "introduction": row.Introduction, "education": row.Education, "ethnicity": row.Ethnicity, "zodiac": row.Zodiac, "skills": db.UnmarshalStringSlice(row.Skills), "certificates": db.NormalizeJSONObjectList(jsonValue(row.Certificates, []interface{}{}), "name"), "identityVerified": row.IdentityVerified, "physicalExamVerified": row.PhysicalExamVerified, "medicalReportImageUrls": db.UnmarshalStringSlice(row.MedicalReportImageURLs), "personalInfo": jsonValue(row.PersonalInfo, map[string]interface{}{}), "workHistory": db.NormalizeJSONObjectList(jsonValue(row.WorkHistory, []interface{}{}), "role"), "photoUrls": db.UnmarshalStringSlice(row.PhotoURLs), "displayFields": jsonValue(row.DisplayFields, map[string]bool{}), "status": row.Status, "source": row.Source, "sort": row.Sort, "createdAt": row.CreatedAt, "updatedAt": row.UpdatedAt}
+	return gin.H{"id": row.ID, "applicationId": row.ApplicationID, "contactPhone": row.ContactPhone, "avatarUrl": row.AvatarURL, "name": row.Name, "age": row.Age, "experienceYears": row.ExperienceYears, "origin": row.Origin, "serviceIds": db.UnmarshalStringSlice(row.ServiceIDs), "jobs": db.UnmarshalStringSlice(row.Jobs), "availabilityStatus": row.AvailabilityStatus, "rating": row.Rating, "serviceCount": row.ServiceCount, "recommended": row.Recommended, "introduction": row.Introduction, "education": row.Education, "ethnicity": row.Ethnicity, "zodiac": row.Zodiac, "birthDate": row.BirthDate, "constellation": row.Constellation, "skills": db.UnmarshalStringSlice(row.Skills), "certificates": db.NormalizeJSONObjectList(jsonValue(row.Certificates, []interface{}{}), "name"), "identityVerified": row.IdentityVerified, "physicalExamVerified": row.PhysicalExamVerified, "medicalReportImageUrls": db.UnmarshalStringSlice(row.MedicalReportImageURLs), "personalInfo": jsonValue(row.PersonalInfo, map[string]interface{}{}), "workHistory": db.NormalizeJSONObjectList(jsonValue(row.WorkHistory, []interface{}{}), "role"), "photoUrls": db.UnmarshalStringSlice(row.PhotoURLs), "displayFields": jsonValue(row.DisplayFields, map[string]bool{}), "status": row.Status, "source": row.Source, "sort": row.Sort, "createdAt": row.CreatedAt, "updatedAt": row.UpdatedAt}
 }
 
 func ListDemands(c *gin.Context) {

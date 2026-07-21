@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS caregivers (
     education VARCHAR(64) NOT NULL DEFAULT '',
     ethnicity VARCHAR(64) NOT NULL DEFAULT '',
     zodiac VARCHAR(32) NOT NULL DEFAULT '',
+    birth_date VARCHAR(10) NOT NULL DEFAULT '',
+    constellation VARCHAR(32) NOT NULL DEFAULT '',
     skills TEXT NOT NULL,
     certificates TEXT NOT NULL,
     identity_verified BOOLEAN NOT NULL DEFAULT FALSE,

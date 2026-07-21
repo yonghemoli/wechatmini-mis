@@ -105,8 +105,6 @@ type caregiverSummary struct {
 	Jobs               []string        `json:"jobs"`
 	AvailabilityStatus string          `json:"availabilityStatus"`
 	AvailabilityText   string          `json:"availabilityText"`
-	Rating             float64         `json:"rating"`
-	ServiceCount       int             `json:"serviceCount"`
 	Recommended        bool            `json:"recommended"`
 	DisplayFields      map[string]bool `json:"displayFields"`
 }
@@ -117,6 +115,8 @@ type caregiverDetail struct {
 	Education              string          `json:"education"`
 	Ethnicity              string          `json:"ethnicity"`
 	Zodiac                 string          `json:"zodiac,omitempty"`
+	BirthDate              string          `json:"birthDate,omitempty"`
+	Constellation          string          `json:"constellation,omitempty"`
 	Skills                 []string        `json:"skills"`
 	Certificates           interface{}     `json:"certificates"`
 	IdentityVerified       bool            `json:"identityVerified"`
@@ -173,7 +173,7 @@ func caregiverSummaryView(row db.CaregiverDO) caregiverSummary {
 	return caregiverSummary{ID: row.ID, AvatarURL: row.AvatarURL, Name: row.Name, Age: row.Age, ExperienceYears: row.ExperienceYears,
 		ExperienceText: fmt.Sprintf("%d年经验", row.ExperienceYears), Origin: row.Origin, ServiceIDs: db.UnmarshalStringSlice(row.ServiceIDs),
 		Jobs: db.UnmarshalStringSlice(row.Jobs), AvailabilityStatus: row.AvailabilityStatus, AvailabilityText: availabilityText[row.AvailabilityStatus],
-		Rating: row.Rating, ServiceCount: row.ServiceCount, Recommended: row.Recommended, DisplayFields: displayFields(row.DisplayFields)}
+		Recommended: row.Recommended, DisplayFields: displayFields(row.DisplayFields)}
 }
 
 func GetBusinessCaregiver(c *gin.Context) {
@@ -187,7 +187,7 @@ func GetBusinessCaregiver(c *gin.Context) {
 		reports = []string{}
 	}
 	detail := caregiverDetail{caregiverSummary: caregiverSummaryView(*row), Introduction: row.Introduction, Education: row.Education,
-		Ethnicity: row.Ethnicity, Zodiac: row.Zodiac, Skills: db.UnmarshalStringSlice(row.Skills), Certificates: db.NormalizeJSONObjectList(decodeJSONValue(row.Certificates, []interface{}{}), "name"),
+		Ethnicity: row.Ethnicity, Zodiac: row.Zodiac, BirthDate: row.BirthDate, Constellation: row.Constellation, Skills: db.UnmarshalStringSlice(row.Skills), Certificates: db.NormalizeJSONObjectList(decodeJSONValue(row.Certificates, []interface{}{}), "name"),
 		IdentityVerified: row.IdentityVerified, PhysicalExamVerified: row.PhysicalExamVerified, MedicalReportImageURLs: reports,
 		PersonalInfo: decodeJSONValue(row.PersonalInfo, map[string]interface{}{}), WorkHistory: db.NormalizeJSONObjectList(decodeJSONValue(row.WorkHistory, []interface{}{}), "role"), PhotoURLs: db.UnmarshalStringSlice(row.PhotoURLs), DisplayFields: displayFields(row.DisplayFields)}
 	businessOK(c, 200, detail)

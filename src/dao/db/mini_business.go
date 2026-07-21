@@ -165,6 +165,10 @@ func SaveCaregiver(row *CaregiverDO) error {
 
 func DeleteCaregiver(id string) error { return Get().Delete(&CaregiverDO{}, "id = ?", id).Error }
 
+func UpdateCaregiverStatus(id, status string) error {
+	return Get().Model(&CaregiverDO{}).Where("id = ?", id).Update("status", status).Error
+}
+
 func FindDemandByIdempotency(scope, key string, since time.Time) (*DemandDO, error) {
 	if key == "" {
 		return nil, gorm.ErrRecordNotFound
