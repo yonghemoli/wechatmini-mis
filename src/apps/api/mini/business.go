@@ -93,41 +93,6 @@ func categoryView(row db.MiniServiceCategoryDO) serviceCategoryView {
 		IconURL: row.IconURL, Tags: db.UnmarshalStringSlice(row.Tags), Enabled: row.Enabled, Sort: row.Sort}
 }
 
-type caregiverSummary struct {
-	ID                 string          `json:"id"`
-	AvatarURL          string          `json:"avatarUrl"`
-	Name               string          `json:"name"`
-	Age                int             `json:"age"`
-	ExperienceYears    int             `json:"experienceYears"`
-	ExperienceText     string          `json:"experienceText"`
-	Origin             string          `json:"origin"`
-	ServiceIDs         []string        `json:"serviceIds"`
-	Jobs               []string        `json:"jobs"`
-	AvailabilityStatus string          `json:"availabilityStatus"`
-	AvailabilityText   string          `json:"availabilityText"`
-	Recommended        bool            `json:"recommended"`
-	DisplayFields      map[string]bool `json:"displayFields"`
-}
-
-type caregiverDetail struct {
-	caregiverSummary
-	Introduction           string          `json:"introduction"`
-	Education              string          `json:"education"`
-	Ethnicity              string          `json:"ethnicity"`
-	Zodiac                 string          `json:"zodiac,omitempty"`
-	BirthDate              string          `json:"birthDate,omitempty"`
-	Constellation          string          `json:"constellation,omitempty"`
-	Skills                 []string        `json:"skills"`
-	Certificates           interface{}     `json:"certificates"`
-	IdentityVerified       bool            `json:"identityVerified"`
-	PhysicalExamVerified   bool            `json:"physicalExamVerified"`
-	MedicalReportImageURLs []string        `json:"medicalReportImageUrls"`
-	PersonalInfo           interface{}     `json:"personalInfo"`
-	WorkHistory            interface{}     `json:"workHistory"`
-	PhotoURLs              []string        `json:"photoUrls"`
-	DisplayFields          map[string]bool `json:"displayFields"`
-}
-
 func ListBusinessCaregivers(c *gin.Context) {
 	page, err1 := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, err2 := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
@@ -162,18 +127,31 @@ func ListBusinessCaregivers(c *gin.Context) {
 		businessFail(c, 500, 50000, "查询服务人员失败")
 		return
 	}
-	list := make([]caregiverSummary, 0, len(rows))
+	list := make([]gin.H, 0, len(rows))
 	for _, row := range rows {
 		list = append(list, caregiverSummaryView(row))
 	}
 	businessOK(c, 200, gin.H{"list": list, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page*pageSize) < total})
 }
 
-func caregiverSummaryView(row db.CaregiverDO) caregiverSummary {
-	return caregiverSummary{ID: row.ID, AvatarURL: row.AvatarURL, Name: row.Name, Age: row.Age, ExperienceYears: row.ExperienceYears,
-		ExperienceText: fmt.Sprintf("%d年经验", row.ExperienceYears), Origin: row.Origin, ServiceIDs: db.UnmarshalStringSlice(row.ServiceIDs),
-		Jobs: db.UnmarshalStringSlice(row.Jobs), AvailabilityStatus: row.AvailabilityStatus, AvailabilityText: availabilityText[row.AvailabilityStatus],
-		Recommended: row.Recommended, DisplayFields: displayFields(row.DisplayFields)}
+func caregiverSummaryView(row db.CaregiverDO) gin.H {
+	fields := displayFields(row.DisplayFields)
+	view := gin.H{"id": row.ID, "recommended": row.Recommended, "displayFields": fields}
+	setPublicField(view, fields, "avatarUrl", row.AvatarURL)
+	setPublicField(view, fields, "name", row.Name)
+	setPublicField(view, fields, "age", row.Age)
+	if isPublicField(fields, "experienceYears") {
+		view["experienceYears"] = row.ExperienceYears
+		view["experienceText"] = fmt.Sprintf("%d年经验", row.ExperienceYears)
+	}
+	setPublicField(view, fields, "origin", row.Origin)
+	setPublicField(view, fields, "serviceIds", db.UnmarshalStringSlice(row.ServiceIDs))
+	setPublicField(view, fields, "jobs", db.UnmarshalStringSlice(row.Jobs))
+	if isPublicField(fields, "availabilityStatus") {
+		view["availabilityStatus"] = row.AvailabilityStatus
+		view["availabilityText"] = availabilityText[row.AvailabilityStatus]
+	}
+	return view
 }
 
 func GetBusinessCaregiver(c *gin.Context) {
@@ -182,15 +160,39 @@ func GetBusinessCaregiver(c *gin.Context) {
 		businessFail(c, 404, 40400, "服务人员不存在")
 		return
 	}
+	businessOK(c, 200, caregiverDetailView(*row))
+}
+
+func caregiverDetailView(row db.CaregiverDO) gin.H {
 	reports := db.UnmarshalStringSlice(row.MedicalReportImageURLs)
 	if !row.PhysicalExamVerified {
 		reports = []string{}
 	}
-	detail := caregiverDetail{caregiverSummary: caregiverSummaryView(*row), Introduction: row.Introduction, Education: row.Education,
-		Ethnicity: row.Ethnicity, Zodiac: row.Zodiac, BirthDate: row.BirthDate, Constellation: row.Constellation, Skills: db.UnmarshalStringSlice(row.Skills), Certificates: db.NormalizeJSONObjectList(decodeJSONValue(row.Certificates, []interface{}{}), "name"),
-		IdentityVerified: row.IdentityVerified, PhysicalExamVerified: row.PhysicalExamVerified, MedicalReportImageURLs: reports,
-		PersonalInfo: decodeJSONValue(row.PersonalInfo, map[string]interface{}{}), WorkHistory: db.NormalizeJSONObjectList(decodeJSONValue(row.WorkHistory, []interface{}{}), "role"), PhotoURLs: db.UnmarshalStringSlice(row.PhotoURLs), DisplayFields: displayFields(row.DisplayFields)}
-	businessOK(c, 200, detail)
+	fields := displayFields(row.DisplayFields)
+	detail := caregiverSummaryView(row)
+	setPublicField(detail, fields, "introduction", row.Introduction)
+	setPublicField(detail, fields, "education", row.Education)
+	setPublicField(detail, fields, "ethnicity", row.Ethnicity)
+	setPublicField(detail, fields, "zodiac", row.Zodiac)
+	setPublicField(detail, fields, "birthDate", row.BirthDate)
+	setPublicField(detail, fields, "constellation", row.Constellation)
+	setPublicField(detail, fields, "skills", db.UnmarshalStringSlice(row.Skills))
+	setPublicField(detail, fields, "certificates", db.NormalizeJSONObjectList(decodeJSONValue(row.Certificates, []interface{}{}), "name"))
+	setPublicField(detail, fields, "identityVerified", row.IdentityVerified)
+	setPublicField(detail, fields, "physicalExamVerified", row.PhysicalExamVerified)
+	setPublicField(detail, fields, "medicalReportImageUrls", reports)
+	setPublicField(detail, fields, "personalInfo", db.SanitizeCaregiverPersonalInfo(decodeJSONValue(row.PersonalInfo, map[string]interface{}{})))
+	setPublicField(detail, fields, "workHistory", db.NormalizeJSONObjectList(decodeJSONValue(row.WorkHistory, []interface{}{}), "role"))
+	setPublicField(detail, fields, "photoUrls", db.UnmarshalStringSlice(row.PhotoURLs))
+	return detail
+}
+
+func isPublicField(fields map[string]bool, field string) bool { return fields[field] != false }
+
+func setPublicField(target gin.H, fields map[string]bool, field string, value interface{}) {
+	if isPublicField(fields, field) {
+		target[field] = value
+	}
 }
 
 func CreateBusinessDemand(c *gin.Context) {

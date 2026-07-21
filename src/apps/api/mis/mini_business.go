@@ -145,6 +145,15 @@ func SaveCaregiver(c *gin.Context) {
 			return
 		}
 	}
+	certificates := db.NormalizeJSONObjectList(req.Certificates, "name")
+	workHistory := db.NormalizeJSONObjectList(req.WorkHistory, "role")
+	personalInfo := db.SanitizeCaregiverPersonalInfo(req.PersonalInfo)
+	publicText := []string{req.Name, req.Origin, req.Introduction, req.Education, req.Ethnicity, req.Zodiac, req.Constellation}
+	if db.ContainsPhoneInPublicContent(publicText) || db.ContainsPhoneInPublicContent(req.Jobs) || db.ContainsPhoneInPublicContent(req.Skills) ||
+		db.ContainsPhoneInPublicContent(certificates) || db.ContainsPhoneInPublicContent(workHistory) || db.ContainsPhoneInPublicContent(personalInfo) {
+		response.Error(c, 400, "公开简历不能包含手机号，请通过平台客服处理联系事宜")
+		return
+	}
 	// 创建档案时由服务端生成 ID 且固定为草稿；发布状态只能通过专用接口变更。
 	if id := strings.TrimSpace(c.Param("id")); id != "" {
 		req.ID = id
@@ -189,9 +198,9 @@ func SaveCaregiver(c *gin.Context) {
 	}
 	row := &db.CaregiverDO{ID: req.ID, ApplicationID: applicationID, ContactPhone: strings.TrimSpace(req.ContactPhone), AvatarURL: req.AvatarURL, Name: strings.TrimSpace(req.Name), Age: req.Age, ExperienceYears: req.ExperienceYears, Origin: req.Origin,
 		ServiceIDs: db.MarshalStringSlice(req.ServiceIDs), Jobs: db.MarshalStringSlice(req.Jobs), AvailabilityStatus: req.AvailabilityStatus, Rating: req.Rating, ServiceCount: req.ServiceCount, Recommended: req.Recommended,
-		Introduction: req.Introduction, Education: req.Education, Ethnicity: req.Ethnicity, Zodiac: req.Zodiac, BirthDate: req.BirthDate, Constellation: req.Constellation, Skills: db.MarshalStringSlice(req.Skills), Certificates: mustJSON(db.NormalizeJSONObjectList(req.Certificates, "name"), "[]"),
-		IdentityVerified: req.IdentityVerified, PhysicalExamVerified: req.PhysicalExamVerified, MedicalReportImageURLs: db.MarshalStringSlice(req.MedicalReportImageURLs), PersonalInfo: mustJSON(req.PersonalInfo, "{}"),
-		WorkHistory: mustJSON(db.NormalizeJSONObjectList(req.WorkHistory, "role"), "[]"), PhotoURLs: db.MarshalStringSlice(req.PhotoURLs), DisplayFields: mustJSON(req.DisplayFields, "{}"), Status: status, Source: source, Sort: req.Sort}
+		Introduction: req.Introduction, Education: req.Education, Ethnicity: req.Ethnicity, Zodiac: req.Zodiac, BirthDate: req.BirthDate, Constellation: req.Constellation, Skills: db.MarshalStringSlice(req.Skills), Certificates: mustJSON(certificates, "[]"),
+		IdentityVerified: req.IdentityVerified, PhysicalExamVerified: req.PhysicalExamVerified, MedicalReportImageURLs: db.MarshalStringSlice(req.MedicalReportImageURLs), PersonalInfo: mustJSON(personalInfo, "{}"),
+		WorkHistory: mustJSON(workHistory, "[]"), PhotoURLs: db.MarshalStringSlice(req.PhotoURLs), DisplayFields: mustJSON(req.DisplayFields, "{}"), Status: status, Source: source, Sort: req.Sort}
 	if !row.PhysicalExamVerified {
 		row.MedicalReportImageURLs = "[]"
 	}
